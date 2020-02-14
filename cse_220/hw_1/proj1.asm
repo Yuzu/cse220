@@ -18,6 +18,9 @@ invalid_args_error: .asciiz "INVALID_ARGS\n"
 
 # Put your additional .data declarations here
 
+space: .asciiz " "
+newline: .asciiz "\n"
+d_out: .asciiz ""
 
 # Main program starts here
 .text
@@ -61,6 +64,8 @@ zero_args:
 
 start_coding_here:
     # Start the assignment by writing your code here
+    
+    # registers $s0-5 should not be touched
     
     lw $s0, addr_arg0 # Load the 1st argument's address into $s0
     lw $s1, addr_arg1 # 2nd arg
@@ -163,8 +168,409 @@ start_coding_here:
     
     valid_num_args:
     
+    # Determines which operation to perform
     
-    
+    runB:
+        li $t3, 66 # 66 is "B"
+    	bne $s5, $t3, runC
+    	
+    	
+    	j exit
+    runC:
+    	li $t3, 67 # 66 is "C"
+    	bne $s5, $t3, runD
+    	
+    	
+    	
+    	j exit
+    runD:
+    	# Check whether we're running D or not
+    	li $t3, 68 # c8 is "D"
+    	bne $s5, $t3, runE
+    	
+    	lbu $t4, 10($s1) 
+    	bne $t4, $0, invalid_hex_address # Hex address is longer than 10 characters
+    	
+    	# Ensure first two characters are 0x
+    	lbu $t4, 0($s1) # Load 1st char of 2nd arg into $t4
+    	li $t5, 48 # 48 is "0" in ascii
+    	bne $t4,  $t5, invalid_hex_address
+    	
+    	addi $s1, $s1, 1 # Load 2nd char of 2nd arg into $t4
+    	lbu $t4, 0($s1) 
+    	li $t5, 120 # 120 is "x" in ascii
+    	bne $t4, $t5, invalid_hex_address
+    	
+    	li $t1, 0 # "i" in for-loop
+    	li $t2, 8  # Upper bound only needs to be 8 since we already checked the first two char
+    	
+    	li $t5, 48 # 48 is "0" in ascii
+    	li $t6, 57 # 57 is "9" in ascii
+    	li $t0, 65 #65 is "A" in ascii
+    	li $t7, 70 # 70 is "F" in ascii
+    	
+    	addi $s1, $s1, 1 # Load 3rd char of 2nd arg, already checked first two.
+    	
+    	for_validation:
+    		beq $t1, $t2, valid_hex_address # Check if loop is done
+    		addi $t1, $t1, 1 # Increment loop
+    		
+    		lbu $t4, 0($s1) # Load current char of 2nd arg
+    		
+    		blt $t4, $t5, invalid_hex_address # Ascii value less than "0" (48)
+    		bgt $t4, $t7, invalid_hex_address # Ascii value greater than "F" (70)
+    		
+    		bgt $t4, $t6, greater_than_57 # Need to make sure we don't miss ascii values between 57 and 65, those are invalid.
+    		j valid_char
+    		
+    		greater_than_57:
+			blt $t4, $t0, invalid_hex_address # If the char is in that blind spot between 57 and 65, it's invalid. 57 < char < 65
+    		
+    	   	valid_char:
+    	   	
+    	   	addi $s1, $s1, 1 # Increment to next char in string
+    	   	j for_validation
+
+    	invalid_hex_address:
+    	    	li $v0, 4 
+    		la $a0, invalid_args_error # Print error
+    		syscall
+    	
+    		li $v0, 10 #Exit program
+   		syscall
+    	
+    	valid_hex_address:
+    	
+	# The below will convert the hex to the operation's respective fields
+	
+	
+	lw $s1, addr_arg1 # reload 2nd arg
+	
+	addi $s1, $s1, 2 # Offset to 3rd char in 2nd arg b/c don't need to look at first 2
+	
+	# $t6 is still "9" in ascii, no need to re-assign
+    	# $t0 is still "A" in ascii
+	
+	# OBTAIN OPCODE
+	# OPCODE USES: All of char 1 + first 2 bytes of char 2 = 6 total
+	
+	lbu $t1, 0($s1) # Loads char 1
+	
+	# Converts the ascii to decimal
+	ble $t1, $t6, opcode_digits_1 # Less than/equal to 9 means dealing w/ a digit
+	bge $t1, $t0, opcode_letters_1 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	opcode_digits_1:
+		addi $t1, $t1, -48 # get decimal value
+		j opcode_digit_1_done
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	opcode_letters_1:
+		addi $t1, $t1, -55 # get decimal value
+	
+	opcode_digit_1_done:
+
+	sll $t1, $t1, 2 # Shift left to make space for the other 2 bits from char 2
+	
+	lbu $t2, 1($s1) # Loads char 2
+	
+	# Converts the ascii to decimal
+	ble $t2, $t6, opcode_digits_2 # Less than/equal to 9 means dealing w/ a digit
+	bge $t2, $t0, opcode_letters_2 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	opcode_digits_2:
+		addi $t2, $t2, -48 # get decimal value
+		j opcode_digit_2_done
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	opcode_letters_2:
+		addi $t2, $t2, -55 # get decimal value
+	
+	opcode_digit_2_done:
+	
+	srl $t2, $t2, 2 #shift right 2 because there's no need for the last 2 bits
+	
+	add $t3, $t1, $t2 # Combine two values
+	
+	li $v0, 1
+	move $a0, $t3
+	syscall
+	
+	li $v0, 4
+	la $a0, space
+	syscall
+	
+	# OBTAIN RS FIELD
+	# RS FIELD USES: Last 2 bits of char 2 + first 3 bits of char 3 = 5 total
+	
+	lbu $t1, 1($s1) # Load char 2
+	
+	# Converts the ascii to decimal
+	ble $t1, $t6, rs_digits_1 # Less than/equal to 9 means dealing w/ a digit
+	bge $t1, $t0, rs_letters_1 # Greater than/equal to A means dealing w/ a letter
+	# 1-9: subtract 48 from ascii value to get decimal value
+	rs_digits_1:
+		addi $t1, $t1, -48 # get decimal value
+		j rs_digits_done_1
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	rs_letters_1:
+		addi $t1, $t1, -55 # get decimal value
+	
+	rs_digits_done_1:
+	
+	sll $t1, $t1, 2 # Shift left 2 b/c those 2 bits already used in opcode
+	
+	lbu $t2, 2($s1) # Load char 3
+	
+	# Converts the ascii to decimal
+	ble $t2, $t6, rs_digits_2 # Less than/equal to 9 means dealing w/ a digit
+	bge $t2, $t0, rs_letters_2 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	rs_digits_2:
+		addi $t2, $t2, -48 # get decimal value
+		j rs_digits_done_2
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	rs_letters_2:
+		addi $t2, $t2, -55 # get decimal value
+	
+	rs_digits_done_2:
+	
+	srl $t2, $t2, 1 # Shift 3rd char right 1 b/c only need first 3 bits
+	
+	add $t3, $t1, $t2
+	
+	li $v0, 1
+	move $a0, $t3
+	syscall
+	
+	li $v0, 4
+	la $a0, space
+	syscall
+	
+	
+	# OBTAIN RT FIELD
+	# RT FIELD USES: Last bit of char 3 + all of char 4 = 5 bits
+	
+	lbu $t1, 2($s1) # Load char 3
+
+	# Converts the ascii to decimal
+	ble $t1, $t6, rt_digits_1 # Less than/equal to 9 means dealing w/ a digit
+	bge $t1, $t0, rt_letters_1 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	rt_digits_1:
+		addi $t1, $t1, -48 # get decimal value
+		j rt_digits_done_1
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	rt_letters_1:
+		addi $t1, $t1, -55 # get decimal value
+	
+	rt_digits_done_1:
+	
+	sll $t1, $t1, 3 # get last bit of $t1
+	
+	lbu $t2, 3($s1) # load char 4
+
+
+	# Converts the ascii to decimal
+	ble $t2, $t6, rt_digits_2 # Less than/equal to 9 means dealing w/ a digit
+	bge $t2, $t0, rt_letters_2 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	rt_digits_2:
+		addi $t2, $t2, -48 # get decimal value
+		j rt_digits_done_2
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	rt_letters_2:
+		addi $t2, $t2, -55 # get decimal value
+	
+	rt_digits_done_2:
+	
+	srl $t2, $t2, 1
+	
+	add $t3, $t1, $t2
+	
+	li $v0, 1
+	move $a0, $t3
+	syscall
+	
+	li $v0, 4
+	la $a0, space
+	syscall
+	
+	
+	# OBTAIN IMMEDIATE FIELD
+	 
+	 # CHAR 5
+	 
+	 lbu $t2, 4($s1) # load char 5 HERE
+
+	# Converts the ascii to decimal
+	ble $t2, $t6, imm_digits_1 # Less than/equal to 9 means dealing w/ a digit
+	bge $t2, $t0, imm_letters_1 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	imm_digits_1:
+		addi $t2, $t2, -48 # get decimal value
+		j imm_digits_done_1
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	imm_letters_1:
+		addi $t2, $t2, -55 # get decimal value
+	
+	imm_digits_done_1:
+	
+	sll $t2, $t2, 12 # move 3 bytes b/c these are the MSBs
+	
+	add $t3, $0, $t2 # $t3 will serve as a running sum.
+	
+	# CHAR 6
+	
+	lbu $t2 5($s1) # load char 6
+	
+	# Converts the ascii to decimal
+	ble $t2, $t6, imm_digits_2 # Less than/equal to 9 means dealing w/ a digit
+	bge $t2, $t0, imm_letters_2 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	imm_digits_2:
+		addi $t2, $t2, -48 # get decimal value
+		j imm_digits_done_2
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	imm_letters_2:
+		addi $t2, $t2, -55 # get decimal value
+	
+	imm_digits_done_2:
+	
+	sll $t2, $t2, 8 # move 2 bytes
+	
+	add $t3, $t3, $t2 # add to running sum
+	
+	# CHAR 7
+	
+	lbu $t2, 6($s1) # load 7th character
+	
+	# Converts the ascii to decimal
+	ble $t2, $t6, imm_digits_3 # Less than/equal to 9 means dealing w/ a digit
+	bge $t2, $t0, imm_letters_3 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	imm_digits_3:
+		addi $t2, $t2, -48 # get decimal value
+		j imm_digits_done_3
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	imm_letters_3:
+		addi $t2, $t2, -55 # get decimal value
+	
+	imm_digits_done_3:
+	
+	sll $t2, $t2, 4 # move 1 byte
+	
+	add $t3, $t3, $t2 # add to running sum
+	
+
+	# CHAR 8
+	
+	# Converts the ascii to decimal
+	ble $t2, $t6, imm_digits_4 # Less than/equal to 9 means dealing w/ a digit
+	bge $t2, $t0, imm_letters_4 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	imm_digits_4:
+		addi $t2, $t2, -48 # get decimal value
+		j imm_digits_done_4
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	imm_letters_4:
+		addi $t2, $t2, -55 # get decimal value
+	
+	imm_digits_done_4:
+	
+	# No shift needed
+	
+	add $t3, $t3, $t2 # add to running sum
+	
+	li $v0, 1
+	move $a0, $t3
+	syscall
+	
+	li $v0, 4
+	la $a0, newline
+	syscall
+	
+    	j exit
+    	
+    	
+    runE:
+    	
+    	lbu $t1, 0($s1)
+    	lbu $t2 1($s1)
+    	
+    	sra $t1, $t1, 4
+    	li $v0, 36
+    	move $a0, $t1
+    	syscall
+    	
+    	sra $t2, $t2, 4
+    	li $v0, 36
+    	move $a0, $t1
+    	syscall
+    	
+    	j exit
+    	# arg 2 must be in range [0, 63]
+    	li $t0, 63
+    	bltz $s1, invalid_arg_ranges
+    	bgt $s1, $t0, invalid_arg_ranges
+    	
+    	# arg 3 must be in range [0, 31]
+    	li $t0, 31
+    	bltz $s2, invalid_arg_ranges
+    	bgt $s2, $t0, invalid_arg_ranges
+    	
+    	# arg 4 must be in range [0, 31]
+    	bltz $s3, invalid_arg_ranges
+    	bgt $s4, $t0, invalid_arg_ranges
+    	
+    	# arg 5 must be in range [-2^15, 2^(15) - 1]
+    	li $t0 32768
+    	li $t1, 32767
+    	
+    	li $t2, 45 # 45 is "-" in ascii, indicates negative number
+    	lbu $t3, 0($s4) # Check if number is negative w/ a sign bit in front
+    	bne $t3, $t2, positive # Branch if there is no sign bit
+    	
+    	bgt $s4, $t0, invalid_arg_ranges # Absolute value greater
+    	
+    	positive:
+    	
+    	bgt $s4, $t1, invalid_arg_ranges
+    	
+    	j valid_arg_ranges
+    	
+    	invalid_arg_ranges:
+    	
+    		li $v0, 4 
+    		la $a0, invalid_args_error # Print error
+    		syscall
+    	
+    		li $v0, 10 #Exit program
+   		syscall
+   		
+    	valid_arg_ranges:
+    	
+
+    	
+    	
+    	j exit
     
 
     
