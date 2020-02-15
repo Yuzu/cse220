@@ -1,0 +1,24 @@
+	
+		
+	
+	 # DEBUGGING LINES ****************
+	li $v0, 35
+	move $a0, $t1
+	syscall
+	
+	li $v0, 4
+	la $a0, newline
+	syscall
+	# DEBUGGING LINES END***************
+	
+	
+	# DEBUGGING LINES ****************
+	li $v0, 35
+	move $a0, $t2
+	syscall
+	
+	li $v0, 4
+	la $a0, newline
+	syscall
+	# DEBUGGING LINES END***************
+	

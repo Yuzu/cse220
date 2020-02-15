@@ -20,7 +20,7 @@ invalid_args_error: .asciiz "INVALID_ARGS\n"
 
 space: .asciiz " "
 newline: .asciiz "\n"
-d_out: .asciiz ""
+neg_sign: .asciiz "-"
 
 # Main program starts here
 .text
@@ -243,7 +243,6 @@ start_coding_here:
     	
 	# The below will convert the hex to the operation's respective fields
 	
-	
 	lw $s1, addr_arg1 # reload 2nd arg
 	
 	addi $s1, $s1, 2 # Offset to 3rd char in 2nd arg b/c don't need to look at first 2
@@ -270,9 +269,10 @@ start_coding_here:
 		addi $t1, $t1, -55 # get decimal value
 	
 	opcode_digit_1_done:
-
-	sll $t1, $t1, 2 # Shift left to make space for the other 2 bits from char 2
 	
+	
+	sll $t1, $t1, 2 # Shift left to make space for the other 2 bits from char 2
+
 	lbu $t2, 1($s1) # Loads char 2
 	
 	# Converts the ascii to decimal
@@ -321,7 +321,8 @@ start_coding_here:
 	
 	rs_digits_done_1:
 	
-	sll $t1, $t1, 2 # Shift left 2 b/c those 2 bits already used in opcode
+	andi $t1, $t1, 0x3 # Mask everything except for 2 lsb which is what we need here (sll alone can't get rid of the bits)
+	sll $t1, $t1, 3 # Shift left to move bits into msb spots
 	
 	lbu $t2, 2($s1) # Load char 3
 	
@@ -357,7 +358,7 @@ start_coding_here:
 	# RT FIELD USES: Last bit of char 3 + all of char 4 = 5 bits
 	
 	lbu $t1, 2($s1) # Load char 3
-
+	
 	# Converts the ascii to decimal
 	ble $t1, $t6, rt_digits_1 # Less than/equal to 9 means dealing w/ a digit
 	bge $t1, $t0, rt_letters_1 # Greater than/equal to A means dealing w/ a letter
@@ -373,11 +374,11 @@ start_coding_here:
 	
 	rt_digits_done_1:
 	
-	sll $t1, $t1, 3 # get last bit of $t1
+	andi $t1, $t1, 0x1 # Mask everything but the lsb, which is what we need
+	sll $t1, $t1, 4 # Move this bit into the msb spot
 	
 	lbu $t2, 3($s1) # load char 4
-
-
+	
 	# Converts the ascii to decimal
 	ble $t2, $t6, rt_digits_2 # Less than/equal to 9 means dealing w/ a digit
 	bge $t2, $t0, rt_letters_2 # Greater than/equal to A means dealing w/ a letter
@@ -392,8 +393,6 @@ start_coding_here:
 		addi $t2, $t2, -55 # get decimal value
 	
 	rt_digits_done_2:
-	
-	srl $t2, $t2, 1
 	
 	add $t3, $t1, $t2
 	
@@ -411,7 +410,7 @@ start_coding_here:
 	 # CHAR 5
 	 
 	 lbu $t2, 4($s1) # load char 5 HERE
-
+	
 	# Converts the ascii to decimal
 	ble $t2, $t6, imm_digits_1 # Less than/equal to 9 means dealing w/ a digit
 	bge $t2, $t0, imm_letters_1 # Greater than/equal to A means dealing w/ a letter
@@ -427,6 +426,23 @@ start_coding_here:
 	
 	imm_digits_done_1:
 	
+	move $s6, $t2 # copy $t2 into $s6 for checking, don't want to edit $t2.
+	srl $s6, $s6, 3 # move 3 bits over to the right, the remaining bit should be the sign bit.
+	 
+	bne $s6, $0, flip_bits_1 # If we're dealing with a negative number, we need to flip all the bits and add 1 (two's complement to decimal)
+	
+	li $s6, 0 # We'll refer back to $s6 to tell whether we need to flip the later bits. 0 = pos number, no flip, 1 = neg number, flip 
+	j final_1 # Jump over bit flips
+	
+	flip_bits_1:
+		li $s6, 1 # Flag for negative number we'll refer to later on.
+		not $t2, $t2 # Flip bits
+		sll $t2, $t2, 28 # Get rid of the other bits, we only need the least significant 4.
+		srl $t2, $t2, 28
+		# Don't add 1 until the end.
+	
+	final_1:
+
 	sll $t2, $t2, 12 # move 3 bytes b/c these are the MSBs
 	
 	add $t3, $0, $t2 # $t3 will serve as a running sum.
@@ -449,6 +465,14 @@ start_coding_here:
 		addi $t2, $t2, -55 # get decimal value
 	
 	imm_digits_done_2:
+	
+	bne $s6, $0, flip_bits_2 # $s6 != 0 means neg number therefore we need to flip
+	j final_2
+	flip_bits_2:
+		not $t2, $t2
+		sll $t2, $t2, 28 # Get rid of the other bits, we only need the least significant 4.
+		srl $t2, $t2, 28
+	final_2:
 	
 	sll $t2, $t2, 8 # move 2 bytes
 	
@@ -473,12 +497,21 @@ start_coding_here:
 	
 	imm_digits_done_3:
 	
+	bne $s6, $0, flip_bits_3 # $s6 != 0 means neg number therefore we need to flip
+	j final_3
+	flip_bits_3:
+		not $t2, $t2
+		sll $t2, $t2, 28 # Get rid of the other bits, we only need the least significant 4.
+		srl $t2, $t2, 28
+	final_3:
 	sll $t2, $t2, 4 # move 1 byte
 	
 	add $t3, $t3, $t2 # add to running sum
 	
 
-	# CHAR 8
+	# CHAR 8 ( LAST CHAR, INCREMENT HERE)
+
+	lbu $t2, 7($s1) # load 8th character
 	
 	# Converts the ascii to decimal
 	ble $t2, $t6, imm_digits_4 # Less than/equal to 9 means dealing w/ a digit
@@ -495,10 +528,28 @@ start_coding_here:
 	
 	imm_digits_done_4:
 	
+	bne $s6, $0, flip_bits_4 # $s6 != 0 means neg number therefore we need to flip
+	j final_4
+	flip_bits_4:
+		not $t2, $t2
+		sll $t2, $t2, 28 # Get rid of the other bits, we only need the least significant 4.
+		srl $t2, $t2, 28
+		addi $t2, $t2, 1 # Last set of bits, need to increment if flipping.
+	final_4:
+	
 	# No shift needed
 	
 	add $t3, $t3, $t2 # add to running sum
 	
+	bne $s6, $0, print_neg_sign # neg number, need to print negative sign
+	j print_digits
+	
+	print_neg_sign:
+		li $v0, 4
+		la $a0, neg_sign
+		syscall
+	
+	print_digits:
 	li $v0, 1
 	move $a0, $t3
 	syscall
@@ -512,20 +563,9 @@ start_coding_here:
     	
     runE:
     	
-    	lbu $t1, 0($s1)
-    	lbu $t2 1($s1)
     	
-    	sra $t1, $t1, 4
-    	li $v0, 36
-    	move $a0, $t1
-    	syscall
     	
-    	sra $t2, $t2, 4
-    	li $v0, 36
-    	move $a0, $t1
-    	syscall
-    	
-    	j exit
+
     	# arg 2 must be in range [0, 63]
     	li $t0, 63
     	bltz $s1, invalid_arg_ranges
