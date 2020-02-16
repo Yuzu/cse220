@@ -444,7 +444,7 @@ start_coding_here:
 	final_1:
 
 	sll $t2, $t2, 12 # move 3 bytes b/c these are the MSBs
-	
+	li $t3, 0 # Initialize $t3 to 0, ensure no garbage memory messes it up
 	add $t3, $0, $t2 # $t3 will serve as a running sum.
 	
 	# CHAR 6
@@ -550,49 +550,172 @@ start_coding_here:
 		syscall
 	
 	print_digits:
-	li $v0, 1
-	move $a0, $t3
-	syscall
+		li $v0, 1
+		move $a0, $t3
+		syscall
 	
-	li $v0, 4
-	la $a0, newline
-	syscall
+		li $v0, 4
+		la $a0, newline
+		syscall
 	
     	j exit
-    	
-    	
+
+
     runE:
+	
+	li $s6, 0 # Initialize $s6 as a running sum to 0.
+    	li $t0, 10 # Need to multiply tens place for proper value
     	
+    	# VALIDATE & CONVERT 2ND ARGUMENT
     	
+    	lw $t1, addr_arg1 # Load 2nd arg
+	
+	lbu $t2, 0($t1) # $t2 = tens place digit
+	lbu $t3, 1($t1) # $t3 = one's place digit
+
+	andi $t2,$t2,0x0F # Mask to convert ascii to decimal digit
+	andi $t3,$t3,0x0F
+	
+	mul $t2, $t2, $t0 # Need to multiply digit in 10s place by 10.
+	
+	add $t4, $t2, $t3 # Store the decimal value of the digit in $t4
+	
+    	# arg 2 must be in range [0, 63] INCLUSIVE
+    	li $t1, 63 # Ok to overwrite $t1, don't need it for this arg anymore
+    	bltz $t4, invalid_arg_ranges # Less than 0 
+    	bgt $t4, $t1, invalid_arg_ranges # Greater than 63
+    	
+    	sll $t4, $t4, 26 # these 6 bits are the msb
+    	add $s6, $0, $t4 # Add $t4 into $s6, which stores the running sum.
+  
+  
+    	# VALIDATE AND CONVERT 3RD ARGUMENT
+    	
+    	lw $t1, addr_arg2
+    	
+    	lbu $t2, 0($t1) # $t2 = tens place digit
+	lbu $t3, 1($t1) # $t3 = one's place digit
+
+	andi $t2,$t2,0x0F # Mask to convert ascii to decimal digit
+	andi $t3,$t3,0x0F
+	
+	mul $t2, $t2, $t0 # Need to multiply digit in 10s place by 10.
+	
+	add $t4, $t2, $t3 # Store the decimal value of the digit in $t4
+	
+    	# arg 3 must be in range [0, 31]
+    	li $t1, 31
+    	bltz $t4, invalid_arg_ranges
+    	bgt $t4, $t1, invalid_arg_ranges
+    	
+    	sll $t4, $t4, 21 # shift into proper locations
+    	add $s6, $s6, $t4 # Add $t4 into $s6, which stores the running sum.
     	
 
-    	# arg 2 must be in range [0, 63]
-    	li $t0, 63
-    	bltz $s1, invalid_arg_ranges
-    	bgt $s1, $t0, invalid_arg_ranges
-    	
-    	# arg 3 must be in range [0, 31]
-    	li $t0, 31
-    	bltz $s2, invalid_arg_ranges
-    	bgt $s2, $t0, invalid_arg_ranges
-    	
+	# VALIDATE AND CONVERT 4TH ARGUMENT
+	
+	lw $t1, addr_arg3
+	
+    	lbu $t2, 0($t1) # $t2 = tens place digit
+	lbu $t3, 1($t1) # $t3 = one's place digit
+
+	andi $t2,$t2,0x0F # Mask to convert ascii to decimal digit
+	andi $t3,$t3,0x0F
+	
+	mul $t2, $t2, $t0 # Need to multiply digit in 10s place by 10.
+	
+	add $t4, $t2, $t3 # Store the decimal value of the digit in $t4
+	
     	# arg 4 must be in range [0, 31]
-    	bltz $s3, invalid_arg_ranges
-    	bgt $s4, $t0, invalid_arg_ranges
+    	li $t1, 31
+    	bltz $t4, invalid_arg_ranges
+    	bgt $t4, $t1, invalid_arg_ranges
     	
+    	sll $t4, $t4, 16 # shift into proper locations
+    
+    	add $s6, $s6, $t4 # Add $t4 into $s6, which stores the running sum.
+    	
+    	
+    	# VALIDATE AND CONVERT 5TH ARGUMENT
+    	
+    	lw $t1, addr_arg4
+    	li $t0, 45 # Overwrite $t0 with ascii 45 = "-" (neg sign)
+    	lbu $t2, 0($t1)
+    	
+    	li $s7, 0  # Flag variable to indicate a positive number.
+    	
+    	beq $t2, $t0, neg_flag # Branch if the first character is a negative sign
+    	j pos_flag
+    	
+    	neg_flag:
+    		li $s7, 1 # Flag set to 1 to indicate a negative number
+    		addi $t1, $t1, 1 # Offset the char by 1 so that 0($t1) will get the first digit instead of the negative sign.
+    	
+    	pos_flag:
+    	li $t4, 0  # Ensure $t4 has nothing in it.
+    	
+    	# TEN-THOUSANDS PLACE
+    	lbu $t2, 0($t1) # re-load 1st digit (in case neg flag was triggered)
+    	li $t0, 10000
+
+    	andi $t2,$t2,0x0F # Mask to convert ascii to decimal digit
+	mul $t2, $t2, $t0 # Need to multiply digit in ten-thousands place by ten-thousand
+	add $t4, $t2, $0 # Store the decimal value of the digit in $t4
+
+    	# THOUSANDS PLACE
+    	lbu $t2, 1($t1)
+    	li $t0, 1000
+    	
+    	andi $t2,$t2,0x0F # Mask to convert ascii to decimal digit
+	mul $t2, $t2, $t0 # Need to multiply digit in thousands place by 1000
+	add $t4, $t4, $t2 # Add to running sum
+	
+	# HUNDREDS PLACE
+	lbu $t2, 2($t1)
+	li $t0, 100
+	
+	andi $t2,$t2,0x0F # Mask to convert ascii to decimal digit
+	mul $t2, $t2, $t0 # Need to multiply digit in hundreds place by 100
+	add $t4, $t4, $t2 # Add to running sum
+
+	# TENS PLACE
+	lbu $t2, 3($t1)
+	li $t0, 10
+	
+	andi $t2, $t2, 0x0F # Mask to convert ascii to decimal digit
+	mul $t2, $t2, $t0
+    	add $t4, $t4, $t2 # Add to running sum
+    	
+    	# ONES PLACE
+    	lbu $t2, 4($t1)
+    	
+    	andi $t2, $t2, 0x0F # Mask to convert to digit
+    	add $t4, $t4, $t2  # Add to running sum
+    	
+	move $t5, $t4 # We'll keep the two's comp. representation in $t4, and use the unsigned ver. in $t5 to compare absolute value to validate the range.
+	
+	# FLIP IF NEGATIVE
+	
+	beq $s7, $0, no_flip # If $s7 = 0, we're dealing w/ a positive number.
+	
+	not $t4, $t4 # Flip bits
+	sll $t4, $t4, 16 # Get rid of the other bits, we only need the least significant 16.
+	srl $t4, $t4, 16 # Shift back
+	addi $t4, $t4, 1 # Increment by 1 for two's comp representation
+	
+	no_flip:
+	
     	# arg 5 must be in range [-2^15, 2^(15) - 1]
     	li $t0 32768
     	li $t1, 32767
     	
-    	li $t2, 45 # 45 is "-" in ascii, indicates negative number
-    	lbu $t3, 0($s4) # Check if number is negative w/ a sign bit in front
-    	bne $t3, $t2, positive # Branch if there is no sign bit
+    	beq $s7, $0, positive # Branch if $s7 = 0 which means pos number
     	
-    	bgt $s4, $t0, invalid_arg_ranges # Absolute value greater
+    	bgt $t5, $t0, invalid_arg_ranges # Absolute value greater
     	
     	positive:
     	
-    	bgt $s4, $t1, invalid_arg_ranges
+    	bgt $t5, $t1, invalid_arg_ranges
     	
     	j valid_arg_ranges
     	
@@ -607,8 +730,15 @@ start_coding_here:
    		
     	valid_arg_ranges:
     	
-
+	add $s6, $s6, $t4
     	
+    	li $v0, 34
+    	move $a0, $s6
+    	syscall
+    	
+    	li $v0, 4
+    	la $a0, newline
+    	syscall
     	
     	j exit
     
