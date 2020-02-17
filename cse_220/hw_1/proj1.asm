@@ -174,11 +174,236 @@ start_coding_here:
         li $t3, 66 # 66 is "B"
     	bne $s5, $t3, runC
     	
-    	
     	j exit
+    	
     runC:
-    	li $t3, 67 # 66 is "C"
+    	li $t3, 67 # 67 is "C"
     	bne $s5, $t3, runD
+    	
+    	li $s4, 49 # 49 is "1" in ascii
+    	li $s5, 50 # "2" in ascii
+    	li $s7, 83 # "S" in ascii
+    	
+    	lbu $t3, 0($s1) # source format
+    	lbu $t4 0($s2) # destination format
+    	
+    	# Validate source format
+    	
+    	beq $t3, $s4, valid_source_format
+    	beq $t3, $s5, valid_source_format
+    	beq $t3, $s7, valid_source_format
+    	
+    	j invalid_source_format
+    	
+    	invalid_source_format:
+    	
+    		li $v0, 4
+    		la $a0, invalid_args_error
+    		syscall
+    		
+    		li $v0, 10
+    		syscall
+    	
+    	valid_source_format:
+    	
+    	# Validate destination format
+    	beq $t3, $s4, valid_destination_format
+    	beq $t3, $s5, valid_destination_format
+    	beq $t3, $s7, valid_destination_format
+    	
+    	j invalid_destination_format
+    	
+    	invalid_destination_format:
+    	
+    		li $v0, 4
+    		la $a0, invalid_args_error
+    		syscall
+    		
+    		li $v0, 10
+    		syscall
+    	
+    	valid_destination_format:
+    	
+    	# convert hex to binary
+
+    	addi $s3, $s3, 2 # offset to account for 0x
+    	
+    	li $t6, 57 # 57 is "9" in ascii
+    	li $t0, 65 #65 is "A" in ascii
+    	
+    	
+    	# CHECK SIGN BIT
+    	
+    	lbu $t1, 0($s3) # Load 1st char
+    	
+	# Converts the ascii to decimal
+	ble $t1, $t6, sign_digits_1 # Less than/equal to 9 means dealing w/ a digit
+	bge $t1, $t0, sign_letters_1 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	sign_digits_1:
+		addi $t1, $t1, -48 # get decimal value
+		j sign_digit_1_done
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	sign_letters_1:
+		addi $t1, $t1, -55 # get decimal value
+	
+	sign_digit_1_done:
+	
+    	sra $t1, $t1, 3 # Look at sign bit
+
+	li $s6, 0 # Flag for positive integer
+	
+    	beq $t1, $0, pos_num
+    	li $s6, 1# Flag - 1 means negative number
+    	
+    	pos_num:
+    	
+	
+	# CONVERT CHAR 1
+    	
+    	lbu $t1, 0($s3) # Load 1st char
+    	
+	# Converts the ascii to decimal
+
+	ble $t1, $t6, int_digits_1 # Less than/equal to 9 means dealing w/ a digit
+	bge $t1, $t0, int_letters_1 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	int_digits_1:
+		addi $t1, $t1, -48 # get decimal value
+		j int_digit_1_done
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	int_letters_1:
+		addi $t1, $t1, -55 # get decimal value
+	
+	int_digit_1_done:
+
+    	beq $s6, $0, finished_1 # No conversion needed b/c positive rep. same across all formats
+    	beq $t3, $t4, finished_1 # Source and destination formats are the same
+    	
+    	# to/from signed requires a flip, but between ones and twos requires nothing (just add/subtract 1 from last char)
+    	# need to keep sign bit after flipping
+    	
+    	beq $t3, $s7, flip_1
+    	beq $t4, $s7, flip_1
+    	j finished_1
+    	
+    	flip_1:
+    		not $t1, $t1 # Flip bits
+ 
+    		addi $t1, $t1, 0x8 # Re-add sign bit
+    		sll $t1, $t1, 28 # Get rid of extra bits
+    		srl $t1, $t1, 28
+    	
+    	finished_1:
+    	
+    	li $s0, 0 # Use $s0 as running sum. Initialize it to 0.
+    	
+    	sll $t1, $t1, 28 # These 4 bits are the msb.
+    	
+    	add $s0, $s0, $t1 # Increment running sum
+    	
+    	
+    	# CONVERT CHAR 2-7
+    	# The conversions for these sandwiched bits are the same. We can use a for loop.
+    	
+    	li $t8, 28 # "i" in for-loop
+    	li $t9, 0 # Converting 6 characters
+    	addi $s3, $s3, 1 # Move $s3 to char 2
+    	# 28 24(SHIFT) 20(SHIFT) 16 (SHIFT) 12(SHIFT) 8(SHIFT) 4(SHIFT) 0(SHIFT) DON'T NEED 0 SHIFT IS LAST ONE -4(DONE)
+    	for_int_conv:
+    		blt $t8, $t9, for_int_conv_done
+    		addi $t8, $t8, -4
+    		
+    		lbu $t1, 0($s3) # load current character
+    		
+    		# Converts the ascii to decimal
+
+		ble $t1, $t6, for_middle_digits # Less than/equal to 9 means dealing w/ a digit
+		bge $t1, $t0, for_middle_letters # Greater than/equal to A means dealing w/ a letter
+	
+		# 1-9: subtract 48 from ascii value to get decimal value
+		for_middle_digits:
+			addi $t1, $t1, -48 # get decimal value
+			j for_middle_digits_done
+
+    	 	#A-F: subtract 55 from ascii value to get decimal value
+		for_middle_letters:
+			addi $t1, $t1, -55 # get decimal value
+	
+		for_middle_digits_done:
+
+    		beq $s6, $0, finished_middle_digits # No conversion needed b/c positive rep. same across all formats
+    		beq $t3, $t4, finished_middle_digits # Source and destination formats are the same
+    	
+    		# to/from signed requires a flip, but between ones and twos requires nothing (just add/subtract 1 from last char)
+    		# no need to worry about sign bit in these sandwiched bits
+    	
+    		beq $t3, $s7, flip_middle_digits
+    		beq $t4, $s7, flip_middle_digits
+    		j finished_middle_digits
+    	
+    		flip_middle_digits:
+    			not $t1, $t1 # Flip bits
+ 			
+ 			sllv $t1, $t1, $t8 # Get rid of extra bits ($t8 is the loop control, counts down from 
+ 			srlv $t1, $t1, $t8
+    			sll $t1, $t1, 28 # Get rid of extra bits
+    			srl $t1, $t1, 28
+    	
+    		finished_middle_digits:
+    	
+    		sll $t1, $t1, 24 # Move bits to proper positions
+    	
+    		add $s0, $s0, $t1 # Increment running sum
+    	
+    		
+    		for_int_conv_done:
+    		#stop here
+    	lbu $t1, 1($s3) # Load 2nd char
+    	
+	# Converts the ascii to decimal
+
+	ble $t1, $t6, int_digits_2 # Less than/equal to 9 means dealing w/ a digit
+	bge $t1, $t0, int_letters_2 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	int_digits_2:
+		addi $t1, $t1, -48 # get decimal value
+		j int_digit_2_done
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	int_letters_2:
+		addi $t1, $t1, -55 # get decimal value
+	
+	int_digit_2_done:
+
+    	beq $s6, $0, finished_2 # No conversion needed b/c positive rep. same across all formats
+    	beq $t3, $t4, finished_2 # Source and destination formats are the same
+    	
+    	# to/from signed requires a flip, but between ones and twos requires nothing (just add/subtract 1 from last char)
+    	# no need to worry about sign bit in these sandwiched bits
+    	
+    	beq $t3, $s7, flip_2
+    	beq $t4, $s7, flip_2
+    	j finished_2
+    	
+    	flip_2:
+    		not $t1, $t1 # Flip bits
+ 		
+    		sll $t1, $t1, 28 # Get rid of extra bits
+    		srl $t1, $t1, 28
+    	
+    	finished_2:
+    	
+    	sll $t1, $t1, 24 # Move bits to proper positions
+    	
+    	add $s0, $s0, $t1 # Increment running sum
+    	
+    	# CONVERT CHAR 3
     	
     	
     	

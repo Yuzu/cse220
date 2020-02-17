@@ -21,3 +21,97 @@
 	syscall
 	# DEBUGGING LINES END***************
 	
+# $s4 is "1" in ascii
+    	# $s5 is "2" in ascii
+    	# $s7 is "S" in ascii
+    	#  $t3 is source
+	# $t4 is destination
+	# $s0 is running sum
+	
+	
+	beq $t3, $s4, source_ones_1
+    	beq $t3, $s5, source_twos_1
+    	beq $t3, $s7, source_signed_1
+		
+	source_ones_1:
+    		# ones to twos = adding 1 at the end, nothing to do here.
+    		beq $t4, $s5, finished_1
+    		
+    		#ones to signed is the only other possible operation. 
+    		# Flip everything but sign bit
+
+    		not $t1, $t1 # Flip bits
+ 
+    		addi $t1, $t1, 0x8 # Re-add sign bit
+    		sll $t1, $t1, 28 # Get rid of extra bits
+    		srl $t1, $t1, 28
+ 
+    		j finished_1
+    		
+    	source_twos_1:
+    		#twos to ones = subtracting 1 at the end, nothing to do here
+    		beq $t4, $s4, finished_1
+    		
+    		#twos to signed is the only other possible operation, add 1 to last flipped char.
+    		# Flip everything but sign bit
+    		not $t1, $t1 # Flip bits
+ 
+    		addi $t1, $t1, 0x8 # Re-add sign bit
+    		sll $t1, $t1, 28 # Get rid of extra bits
+    		srl $t1, $t1, 28
+    		
+    		j finished_1
+    		
+    	source_signed_1:
+    		#signed to ones is the same as signed to twos, only difference is that we add 1 to the last char if converting to twos.
+    		
+    		not $t1, $t1 # Flip bits
+ 
+    		addi $t1, $t1, 0x8 # Re-add sign bit
+    		sll $t1, $t1, 28 # Get rid of extra bits
+    		srl $t1, $t1, 28
+
+    		j finished_1
+			
+			
+			
+------------
+lbu $t1, 1($s3) # Load 2nd char
+    	
+	# Converts the ascii to decimal
+
+	ble $t1, $t6, int_digits_2 # Less than/equal to 9 means dealing w/ a digit
+	bge $t1, $t0, int_letters_2 # Greater than/equal to A means dealing w/ a letter
+	
+	# 1-9: subtract 48 from ascii value to get decimal value
+	int_digits_2:
+		addi $t1, $t1, -48 # get decimal value
+		j int_digit_2_done
+
+    	 #A-F: subtract 55 from ascii value to get decimal value
+	int_letters_2:
+		addi $t1, $t1, -55 # get decimal value
+	
+	int_digit_2_done:
+
+    	beq $s6, $0, finished_2 # No conversion needed b/c positive rep. same across all formats
+    	beq $t3, $t4, finished_2 # Source and destination formats are the same
+    	
+    	# to/from signed requires a flip, but between ones and twos requires nothing (just add/subtract 1 from last char)
+    	# no need to worry about sign bit in these sandwiched bits
+    	
+    	beq $t3, $s7, flip_2
+    	beq $t4, $s7, flip_2
+    	j finished_2
+    	
+    	flip_2:
+    		not $t1, $t1 # Flip bits
+ 
+    		sll $t1, $t1, 28 # Get rid of extra bits
+    		srl $t1, $t1, 28
+    	
+    	finished_2:
+    	
+    	sll $t1, $t1, 24 # Move bits to proper positions
+    	
+    	add $s0, $s0, $t1 # Increment running sum
