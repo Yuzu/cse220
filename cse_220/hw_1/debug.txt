@@ -1,6 +1,5 @@
 	
 		
-	
 	 # DEBUGGING LINES ****************
 	li $v0, 35
 	move $a0, $t1
