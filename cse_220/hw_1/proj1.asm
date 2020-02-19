@@ -174,6 +174,164 @@ start_coding_here:
         li $t3, 66 # 66 is "B"
     	bne $s5, $t3, runC
     	
+    	li $s0, 0 # Running sum for the score
+    	
+    	# $s1 stores the arg
+    	
+    	li $s2, 0 # Hearts counter
+    	li $s3, 0 # Diamonds counter
+    	li $s4, 0 # Clubs counter
+    	li $s5, 0 # Spades counter
+    	
+    	li $t6, 65 # 65 is "A" in ascii
+    	li $t7, 75# 75 is "K" in ascii
+    	li $t8, 81# 81 is "Q" in ascii
+    	li $t9, 74# 74 is "J" in ascii
+    	
+    	li $t0, 0 # "i" in for-loop
+    	li $t1, 13  # Loop 13 times for 13 card hand
+    	
+    	for_cards:
+    		beq $t0, $t1, for_cards_done
+    		addi $t0, $t0, 1 # Increment for loop
+    		
+    		lbu $t2, 0($s1) # Look at card value
+
+    		beq $t2, $t6, ace
+    		beq $t2, $t7, king
+    		beq $t2, $t8, queen
+    		beq $t2, $t9, jack
+    		# Number cards are worthless
+    		j card_value_checked
+    		
+    		ace:
+    			addi $s0, $s0, 4
+    			j card_value_checked
+    		king:
+    			addi $s0, $s0, 3
+    			j card_value_checked
+    		queen:
+    			addi $s0, $s0, 2
+    			j card_value_checked
+    		jack:
+    			addi $s0, $s0, 1
+    		card_value_checked:
+    		
+    		lbu $t2, 1($s1) # Look at card suit
+    		
+    		# Not enough registers to store all ascii values for A/K/Q/J and all 4 suits, will just recycle $t5 here.
+    		
+    		li $t5, 72 # 72 is "H" in ascii
+    		beq $t2, $t5, hearts
+    		
+    		li $t5, 68 # 68 is "D" in ascii
+    		beq $t2, $t5, diamonds
+    		
+    		li $t5, 67 # 67 is "C" in ascii
+    		beq $t2, $t5, clubs
+    		
+    		li $t5, 83 # 83 is "S" in ascii
+    		beq $t2, $t5, spades
+    		
+    		hearts:
+    			addi $s2, $s2, 1
+    			j card_suit_checked
+    		diamonds:
+    			addi $s3, $s3, 1
+    			j card_suit_checked
+    		clubs:
+    			addi $s4, $s4, 1
+    			j card_suit_checked
+    		spades:
+    			addi $s5, $s5, 1
+    		card_suit_checked:
+    		
+    		addi $s1, $s1 2  # Look at next 2 characters
+
+    		j for_cards
+    		
+    	for_cards_done:
+    	
+    	li $t0, 1 # For checking # of cards of a given suit.
+    	li $t1, 2
+    	
+    	# CHECK NUMBER OF HEARTS
+    	
+    	bne $s2, $0, hearts_present # Hearts >= 1
+    	addi $s0, $s0, 3 # No hearts, 3 extra points
+    	j hearts_checked
+    	
+    	hearts_present:
+    		beq $s2, $t0, one_heart
+    		beq $s2, $t1, two_hearts
+    		j hearts_checked # More than 2 = no extra points
+    		one_heart:
+    			addi $s0, $s0, 2
+    			j hearts_checked
+    		two_hearts:
+    			addi $s0, $s0, 1
+    	hearts_checked:
+    	
+    	
+    	# CHECK NUMBER OF DIAMONDS
+    	
+	bne $s3, $0, diamonds_present # diamonds >= 1
+    	addi $s0, $s0, 3 # No diamonds, 3 extra points
+    	j diamonds_checked
+    	
+    	diamonds_present:
+    		beq $s3, $t0, one_diamond
+    		beq $s3, $t1, two_diamonds
+    		j diamonds_checked # More than 2 = no extra points
+    		one_diamond:
+    			addi $s0, $s0, 2
+    			j diamonds_checked
+    		two_diamonds:
+    			addi $s0, $s0, 1
+    	diamonds_checked:
+    	
+    	# CHECK CLUBS
+    	
+    	bne $s4, $0, clubs_present # clubs >= 1
+    	addi $s0, $s0, 3 # No clubs, 3 extra points
+    	j clubs_checked
+    	
+    	clubs_present:
+    		beq $s4, $t0, one_club
+    		beq $s4, $t1, two_clubs
+    		j clubs_checked # More than 2 = no extra points
+    		one_club:
+    			addi $s0, $s0, 2
+    			j clubs_checked
+    		two_clubs:
+    			addi $s0, $s0, 1
+    	clubs_checked:
+    	
+    	# CHECK SPADES
+    	
+    	bne $s5, $0, spades_present # spades >= 1
+    	addi $s0, $s0, 3 # No spades, 3 extra points
+    	j spades_checked
+    	
+    	spades_present:
+    		beq $s5, $t0, one_spade
+    		beq $s5, $t1, two_spades
+    		j spades_checked # More than 2 = no extra points
+    		one_spade:
+    			addi $s0, $s0, 2
+    			j spades_checked
+    		two_spades:
+    			addi $s0, $s0, 1
+    	spades_checked:
+    	
+    	li $v0, 1
+    	move $a0, $s0 
+    	syscall
+    	
+    	li $v0, 4
+    	la $a0, newline
+    	syscall
+    	
     	j exit
     	
     runC:

@@ -1,0 +1,14 @@
+bne $s4, 0, clubs_present # clubs >= 1
+    	addi $s0, $s0, 3 # No clubs, 3 extra points
+    	j clubs_checked
+    	
+    	clubs_present:
+    		beq $s4, $t0, one_club
+    		beq $s4, $t1, two_clubs
+    		j clubs_checked # More than 2 = no extra points
+    		one_club:
+    			addi $s0, $s0, 2
+    			j clubs_checked
+    		two_clubs:
+    			addi $s0, $s0, 1
+    	clubs_checked:

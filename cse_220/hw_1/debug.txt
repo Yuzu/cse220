@@ -115,3 +115,21 @@ lbu $t1, 1($s3) # Load 2nd char
     	sll $t1, $t1, 24 # Move bits to proper positions
     	
     	add $s0, $s0, $t1 # Increment running sum
+		
+		
+		
+		
+		
+		li $s0, 0 # Running sum for the score
+    	
+    	# $s1 stores the arg
+    	
+    	li $s2, 0 # Hearts counter
+    	li $s3, 0 # Diamonds counter
+    	li $s4, 0 # Clubs counter
+    	li $s5, 0 # Spades counter
+    	
+    	li $t6, 65 # 65 is "A" in ascii
+    	li $t7, 75# 75 is "K" in ascii
+    	li $t8, 81# 81 is "Q" in ascii
+    	li $t9, 74# 74 is "J" in ascii
