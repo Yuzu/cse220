@@ -65,6 +65,9 @@ zero_args:
 start_coding_here:
     # Start the assignment by writing your code here
     
+    lw $t0, num_args # USE THIS
+    li $t1, 6
+    bge $t0, $t1, invalid_num_args
     # registers $s0-5 should not be touched
     
     lw $s0, addr_arg0 # Load the 1st argument's address into $s0
@@ -604,6 +607,7 @@ start_coding_here:
     		# Cases for negative zero: source=destination -> do nothing OR convert to positive 0
     		li $t0, 0xFFFFFFFF
     		beq $t3, $t4, print_converted_int # source = destination 
+    		bne $t0, $s0, print_converted_int
     		
     		not $s0, $s0 # Flip bits for positive 0 representation
     		
@@ -1175,17 +1179,6 @@ start_coding_here:
     	syscall
     	
     	j exit
-    
-
-    
-    
-    
-    
-    	
-
-    
-    
-
 
 exit:
     li $v0, 10
