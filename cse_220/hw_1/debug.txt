@@ -124,10 +124,10 @@ lbu $t1, 1($s3) # Load 2nd char
     	
     	# $s1 stores the arg
     	
-    	li $s2, 0 # Hearts counter
-    	li $s3, 0 # Diamonds counter
-    	li $s4, 0 # Clubs counter
-    	li $s5, 0 # Spades counter
+    	li $s2, 0 # Hearts counter 4
+    	li $s3, 0 # Diamonds counter 4
+    	li $s4, 0 # Clubs counter 0
+    	li $s5, 0 # Spades counter 5
     	
     	li $t6, 65 # 65 is "A" in ascii
     	li $t7, 75# 75 is "K" in ascii

@@ -1,14 +1,14 @@
-bne $s4, 0, clubs_present # clubs >= 1
-    	addi $s0, $s0, 3 # No clubs, 3 extra points
-    	j clubs_checked
+bne $s5, 0, spades_present # spades >= 1
+    	addi $s0, $s0, 3 # No spades, 3 extra points
+    	j spades_checked
     	
-    	clubs_present:
-    		beq $s4, $t0, one_club
-    		beq $s4, $t1, two_clubs
-    		j clubs_checked # More than 2 = no extra points
-    		one_club:
+    	spades_present:
+    		beq $s5, $t0, one_spade
+    		beq $s5, $t1, two_spades
+    		j spades_checked # More than 2 = no extra points
+    		one_spade:
     			addi $s0, $s0, 2
-    			j clubs_checked
-    		two_clubs:
+    			j spades_checked
+    		two_spades:
     			addi $s0, $s0, 1
-    	clubs_checked:
+    	spades_checked:
