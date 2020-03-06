@@ -1,5 +1,5 @@
 .data
-str: .asciiz "MIPS is fun!"
+str: .asciiz ""
 v0: .asciiz "$v0: "
 
 .text
