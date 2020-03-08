@@ -1,5 +1,5 @@
 .data
-str: .ascii "abcdefoABCDEsthnb\0#"
+str: .ascii "abracadabraS\0"
 v0: .asciiz "$v0: "
 v1: .asciiz "$v1: "
 msg: .asciiz "str: "

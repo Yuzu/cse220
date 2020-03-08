@@ -1,11 +1,11 @@
 .data
 v0: .asciiz "$v0: "
 msg: .asciiz "str: "
-str: .asciiz "aabbacbacbacbacbababababcabbacabcacabcbacbabcacbabbacbcabcababa"
-first: .byte 'b'
-second: .byte 'a'
-replacement_char: .byte 'Z'
-start_index: .word 12
+str: .asciiz "Uppercase Is OK Too\0"
+first: .byte 'T'
+second: .byte 'o'
+replacement_char: .byte 's'
+start_index: .word 10
 
 .text
 .globl main

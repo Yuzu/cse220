@@ -1,5 +1,5 @@
 .data
-str: .asciiz ""
+str: .asciiz "the length"
 v0: .asciiz "$v0: "
 
 .text
