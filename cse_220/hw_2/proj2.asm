@@ -180,6 +180,7 @@ pacman:
 			beq $t3, $s7, ghost_shift_done
 			
 			lbu $t1, 1($a0) # Shift next char to current pos
+			beqz $t5, ghost_shift_done
 			sb $t1, 0($a0)
 			
 			addi $a0, $a0, 1
@@ -252,7 +253,7 @@ replace_first_pair:
 	# Upper-bound is $t1 (string length)
 	
 	for_replace_first_pair:
-		beq $t0, $t1, pair_not_found
+		bge $t0, $t1, pair_not_found
 		addi $t0, $t0, 1 # Increment for-loop
 		
 		lbu $t2, 0($a0) # Load 1st char
@@ -295,10 +296,118 @@ replace_first_pair:
 	jr $ra
 
 replace_all_pairs:
+	# $a0 has the str
+	# $a1 has first of byte-pair
+	# a2 has second
+	# a3 has the replacement char
+	
+	# We're using $s0 to count the number of replacements | $s1 as "i" in our for loop | $s2 as strlen (upperbound for loop) | $s3 has string | $s4 has first char of byte-pair | $s5 has second | $s6 has replacement char
+	addi $sp, $sp, -28
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	sw $s4, 16($sp)
+	sw $s5, 20($sp)
+	sw $s6, 24($sp)
+	
+	# Move args into $s registers
+	move $s3, $a0
+	move $s4, $a1
+	move $s5, $a2
+	move $s6, $a3
+	
+	addi $sp, $sp, -4 # Store $ra, already put $a into $s var so don't care what callee does to them
+	sw $ra, 0($sp) 
+	
+	jal strlen
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	li $s0, 0 # Initialize running sum to 0
+	li $s1, 0 # Initialize "i" to 0
+	move $s2, $v0 # Store str len in $s2
+	
+	for_replace_all_byte_pairs:
+		beq $s1, $s2, for_replace_all_byte_pairs_done
+		
+		move $a0, $s3 # Move string into a0
+		move $a1, $s4 # Move first byte
+		move $a2, $s5 # second byte
+		move $a3, $s6 # replacement char
+		
+		addi $sp, $sp, -8
+		sw $s1, 0($sp) # Store additional arg of index in stack
+		sw $ra, 4($sp)
+		
+		jal replace_first_pair
+		
+		lw $ra, 4($sp)
+		addi $sp, $sp, 8
+		
+		bltz $v0, no_replacement_made
+		
+		move $s1, $v0 # Jump to replaced char
+		addi $s0, $s0, 1 # Replacement made
+		
+		no_replacement_made:
+		addi $s1, $s1, 1 # Look at next char
+		j for_replace_all_byte_pairs
+	
+	for_replace_all_byte_pairs_done:
+	
+	move $v0, $s0 # Move running sum into return register
+	
+	lw $s0, 0($sp) # Restore $s registers
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	lw $s4, 16($sp)
+	lw $s5, 20($sp)
+	lw $s6, 24($sp)
+	addi $sp, $sp, 28
+	
 	jr $ra
 
 bytepair_encode:
-    jr $ra
+	# $a0 has str
+	# $a1 has frequencies
+	# $a2 has replacements
+	
+	# Zero out replacements
+	li $t0, 0
+	li $t1, 52
+	move $t2, $a2 # Store copy of array address, we'll manipulate $t2.
+	
+	for_zeroing_encoding:
+		beq $t0, $t1, for_zeroing_encoding_done
+		addi $t0, $t0, 1
+		
+		sb $0, 0($t2) # Store 0 in current byte
+		addi $t2, $t2, 1# Look at next char
+		
+		j for_zeroing_encoding
+		
+	for_zeroing_encoding_done:
+	
+	# Zero out frequencies
+	li $t0, 0
+	li $t1, 676
+	move $t2, $a1 
+	
+	for_zeroing_encoding2:
+		beq $t0, $t1, for_zeroing_encoding2_done
+		addi $t0, $t0, 1
+		
+		sb $0, 0($t2)
+		addi $t2, $t2, 1
+		
+		j for_zeroing_encoding2
+	
+	for_zeroing_encoding2_done:
+	
+	jr $ra
 
 replace_first_char:
     jr $ra

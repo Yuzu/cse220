@@ -1,10 +1,10 @@
 .data
-str: .ascii "abcdefghijkl\0"  # note how a little garbage has been added past the string
+str: .ascii "myname\0\0"  # note how a little garbage has been added past the string
 ch: .byte 'X'
 v0: .asciiz "$v0: "
 msg: .asciiz "str: "
 .align 2
-index: .word 4
+index: .word 1
 
 .text
 .globl main
