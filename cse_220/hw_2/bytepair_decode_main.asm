@@ -1,6 +1,6 @@
 .data
-str: .asciiz "SoUZTVnWYsXy\0********"
-replacements: .ascii "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0stoonykuiviterbr"
+str: .asciiz "ZbZbZbZbZbZY\0"
+replacements: .ascii "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0baab"
 v0: .asciiz "$v0: "
 msg: .asciiz "str: "
 

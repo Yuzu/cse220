@@ -1,8 +1,8 @@
 .data
-str: .ascii "acadZacabaZcbacZeabZaQ\0*!??"
-first: .byte 'X'
-second: .byte 'Y'
-char: .byte 'Z'
+str: .ascii "QQQQQQ\0"
+first: .byte 'a'
+second: .byte 'b'
+char: .byte 'Q'
 v0: .asciiz "$v0: "
 msg: .asciiz "str: "
 .align 2

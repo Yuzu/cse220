@@ -1,8 +1,8 @@
 .data
-str: .ascii "acadZacabaZcbacZeabZaQ\0\0\0\0\0"
-first: .byte 'X'
-second: .byte 'Y'
-char: .byte 'Z'
+str: .ascii "abcabcabc\0"
+first: .byte 'x'
+second: .byte 'y'
+char: .byte 'f'
 v0: .asciiz "$v0: "
 msg: .asciiz "str: "
 

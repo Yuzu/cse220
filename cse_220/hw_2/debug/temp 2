@@ -1,0 +1,69 @@
+li $t1, 0 # "i" in for-loop
+    	li $t2, 8  # Upper bound
+    	# $t6 is still "9" in ascii
+    	# $t0 is still "A" in ascii
+	
+	for_convert_opcode:
+		beq $t1, $t2, converted_opcode # Check if loop is done
+    		addi $t1, $t1, 1 # Increment loop
+    		
+    		lbu $t4, 0($s1) # Load current char of 2nd arg
+		
+		ble $t4, $t6, digits # Less than/equal to 9 means dealing w/ a digit
+		bge $t4, $t0, letters # Greater than/equal to A means dealing w/ a letter
+		
+		
+		# 1-9: subtract 48 from ascii value to get decimal value
+		digits:
+		
+		addi $t4, $t4, -48 # get decimal value
+
+		addi $s1, $s1, 1 # Increment to next char in string
+    	   	j for_convert_opcode
+    	   	
+    	   	
+    	   	 #A-F: subtract 55 from ascii value to get decimal value
+		letters:
+		
+		addi $t4, $t4, -55 # get decimal value
+		
+		addi $s1, $s1, 1 # Increment to next char in string
+    	   	j for_convert_opcode
+
+    			
+    	converted_opcode:
+    	
+    	#hex
+    	li $v0, 34
+    	move $a0, $t4
+    	syscall
+    	 
+    	 #newline
+    	 li $v0, 4
+    	la $a0, newline
+    	syscall
+    	
+    	#binary 32 padded
+    	li $v0, 35
+    	move $a0, $t4
+    	syscall
+    	
+    	#newline
+    	li $v0, 4
+    	la $a0, newline
+    	syscall
+    	
+    	# decimal
+    	li $v0, 36
+    	move $a0, $t4
+    	syscall
+    	
+    	li $v0, 4
+    	la $a0, newline
+    	syscall
+    	
+    	li $v0, 4
+    	la $a0, newline
+    	syscall
+    	
+    	j exit

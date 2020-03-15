@@ -1,0 +1,133 @@
+move $t2, $a1 # Manipulate ptr to frequencies
+	lbu $t3, 2($t2) # Load current pair's frequency
+	
+	
+	move $t0,  $t3 # $t0 is a variable holding the max frequency
+	move $t1, $t2 # $t1 holds the address of the max frequency byte pair.
+	addi $t2, $t2, 3 # Look at next byte-pair frequency
+	
+	get_largest_frequency:
+		lbu $t3, 2($t2) # Load next frequency
+		beqz $t3, get_largest_frequency_done
+		
+		addi $t2, $t2, 3 # Look at next pair
+		beq $t3, $t0, frequency_tie
+		blt $t3, $t0, get_largest_frequency # If current freq lower than max, ignore it
+		
+
+
+
+addi $sp, $sp, -20 # Save args to call strlen
+	sw $ra, 0($sp)
+	sw $a0, 4($sp)
+	sw $a1, 8($sp)
+	sw $a2, 12($sp)
+	sw $a3, 16($sp)
+	
+	jal strlen
+	
+	lw $ra, 0($sp)
+	lw $a0, 4($sp)
+	lw $a1, 8($sp)
+	lw $a2, 12($sp)
+	lw $a3, 16($sp)
+	addi $sp, $sp, 20
+	
+	move $t1, $v0 # Store string's length in $t1
+	
+	lw $t0, 0($sp) # Load starting index
+	add $a0, $a0, $t0
+	
+	# $t0 is index to start looking at, "i" in for-loop 
+	# Upper-bound is $t1 (string length)
+	
+	for_replace_first_pair:
+		bge $t0, $t1, pair_not_found
+		addi $t0, $t0, 1 # Increment for-loop
+		
+		lbu $t2, 0($a0) # Load 1st char
+		lbu $t3, 1($a0) # Load 2nd char
+		
+		addi $a0, $a0, 1 # Look at next two (including the 2nd of the current pair we're looking at)
+		
+		bne $t2, $a1, for_replace_first_pair # 1st char != 1st target char, this pair is no good
+		bne $t3, $a2, for_replace_first_pair # 2nd char != 2nd target char
+		
+		sb $a3, -1($a0) # Store given char in left spot, use -1 because already incremented earlier
+
+
+		# Shift everything else 1 index left.
+		
+		move $t4, $t0 # copy $t0, we need to return it later.
+		
+		# we can re-use the upperbound of $t1
+		for_replace_first_pair_shift:
+			beq $t4, $t1, for_replace_first_pair_shift_done
+			addi $t4, $t4, 1
+			
+			lbu $t2, 1($a0) # Load next char
+			sb $t2, 0($a0) # Replace current char w/ next char
+			
+			addi $a0, $a0, 1 # Look at next char
+			j for_replace_first_pair_shift
+			
+		for_replace_first_pair_shift_done:
+		j pair_found
+	
+	pair_found:
+	move $v0, $t0 # Store current index of for-loop in return register
+	addi $v0, $v0, -1 # Need to offset because of index-1 based counting
+	jr $ra
+	
+	pair_not_found:
+	li $v0, -1 
+	jr $ra
+	
+	
+	
+	---------------
+	
+	
+	for_replace_all_chars:
+		beq $s0, $s1, for_replace_all_chars_done
+		
+		lbu $t0, 0($s3) # Load current char
+		beqz $t0, for_replace_all_chars_done
+		
+		beq $t0, $a1, char_found_replace
+		
+		# Char not found
+		addi $s3, $s3, 1
+		addi $s0, $s0, 1
+		j for_replace_all_chars
+		
+		char_found_replace:
+			addi $s2, $s2, 1
+			addi $sp, $sp, -20 # Preserve args for call to replace_first_char
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $a3, 12($sp)
+			sw $ra, 16($sp)
+			
+			# All args are still in their respective $a registers, only need to push start_index onto the stack
+			addi $sp, $sp, -4
+			sw $s0, 0($sp)
+			
+			jal replace_first_char
+			
+			addi $sp, $sp, 4
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $a3, 12($sp)
+			lw $ra, 16($sp)
+			addi $sp, $sp, 20
+			
+			addi $s0, $s0, 1
+			
+			addi $s3, $s3, 2 # Look 2 indices past the inserted byte-pair 
+			j for_replace_all_chars
+	
+	for_replace_all_chars_done:

@@ -5,7 +5,7 @@ str: .asciiz "aabbacbacbacbacbababababcab\0"
 first: .byte 'b'
 second: .byte 'a'
 replacement_char: .byte '?'
-start_index: .word 0
+start_index: .word 10
 
 .text
 .globl main
