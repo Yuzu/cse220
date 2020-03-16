@@ -1,7 +1,7 @@
 .data
 v0: .asciiz "$v0: "
 msg: .asciiz "str: "
-str: .asciiz "aaabacadaeafagahaiajakalamanaoapaqarasatauavawaxayazmm\0"
+str: .asciiz "a\0"
 .align 2
 frequencies: .space 676  # 26*26 = 676. DURING GRADING, this memory region will be filled with garbage.
 garbage1: .ascii "qwerty"

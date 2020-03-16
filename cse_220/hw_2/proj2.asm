@@ -95,7 +95,6 @@ pacman:
 	sw $s6, 20($sp)
 	sw $s7, 24($sp)
 	
-	li $s0, 0 # Pac-man's ending position is 0 by default
 	li $s1, 71 # "G" in ascii
 	li $s2, 72 # "H"
 	li $s3, 79 # "O"
@@ -190,7 +189,7 @@ pacman:
 		ghost_shift_done:
 		
 		addi $s6, $s6, -1 # Pacman index
-	
+		j return_pacman_ghost
 	
 	return_pacman:
 	move $a0, $t2
@@ -206,7 +205,6 @@ pacman:
 	
 	move $v1, $v0  # Store current length in 2nd return value
 	move $v0, $s6 # Store pacman's location
-
 	# Restore s registers
 	lw $s1, 0($sp)
 	lw $s2, 4($sp)
@@ -220,7 +218,35 @@ pacman:
 	addi $a0, $a0, 1
 	
 	jr $ra
-
+	
+	return_pacman_ghost:
+	move $a0, $t2
+	addi $sp, $sp, -8
+	sw $ra, 0($sp)
+	sw $a0, 4($sp) # Store current address in case callee changes it
+	
+	jal strlen
+	
+	lw $ra, 0($sp)
+	lw $a0, 4($sp)
+	addi $sp, $sp, 8
+	addi $v0, $v0, -1
+	move $v1, $v0  # Store current length in 2nd return value
+	move $v0, $s6 # Store pacman's location
+	# Restore s registers
+	lw $s1, 0($sp)
+	lw $s2, 4($sp)
+	lw $s3, 8($sp)
+	lw $s4, 12($sp)
+	lw $s5, 16($sp)
+	lw $s6, 20($sp)
+	lw $s7, 24($sp)
+	
+	addi $sp, $sp, 28
+	addi $a0, $a0, 1
+	
+	jr $ra
+	
 replace_first_pair:
 	# $a0 is str
 	# $a1 is first char of byte-pair

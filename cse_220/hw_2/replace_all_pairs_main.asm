@@ -1,10 +1,10 @@
 .data
 v0: .asciiz "$v0: "
 msg: .asciiz "str: "
-str: .asciiz "aabbacbacbacbacbababababcab\0"
-first: .byte 'b'
-second: .byte 'a'
-replacement_char: .byte 'Z'
+str: .asciiz "Stony Crony Baloon\0"
+first: .byte 'o'
+second: .byte 'n'
+replacement_char: .byte 'a'
 
 .text
 .globl main

@@ -1,5 +1,5 @@
 .data
-str: .ascii "thisisnotgoingtoendwell\0"
+str: .ascii "abcdEFIJKLmnpQRUVWXYZ\0"
 v0: .asciiz "$v0: "
 v1: .asciiz "$v1: "
 msg: .asciiz "str: "
