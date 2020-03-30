@@ -8,6 +8,5 @@ mfhi $t5
 mflo $t6
 
 li $v0, 1
-move $a0, $t0
+move $a0, $t6
 syscall
-	
