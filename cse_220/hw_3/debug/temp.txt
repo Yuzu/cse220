@@ -1,0 +1,61 @@
+beq $s2, $t1, merge_tile_one_is_2 # Tile one = 2
+	beq $s3, $t1, merge_tile_two_is_2 # Tile two = 2
+	
+	# 2 + ?
+	merge_tile_one_is_2:
+		# tile two has to be 1
+		beq $s3, $t0, merge_1_plus_2 # tile two = 1
+		j merge_invalid_error # tile two != 1
+	
+	# ? + 2
+	merge_tile_two_is_2:
+		# tile one has to be 1
+		beq $s2, $t0, merge_1_plus_2 # tile one = 1
+		j merge_invalid_error # tile one != 1
+	
+	j merge_other_values
+	
+	
+	
+	
+	
+	
+	li $s0, 0 # $s0 is "i"
+	lb $s1, 0($a0) # $s1 is len (# of rows), outer loop
+	# $s2 is "j", set that to i before we enter the loop.
+	
+	move $s3, $s1 # $s3 is len - 1, inner loop
+	addi $s3, $s3, -1
+	
+	for_slide_row_left_outer:
+		beq $s0, $s1, for_slide_row_left_outer_done
+		move $s2, $s0 # j = i
+		for_slide_row_left_inner:
+			beq $s2, $s3, for_slide_row_left_inner_done
+			# look at current tile | if left is 0, move it | if left is not 0, look at right tile. if can merge, merge into current tile. shift everything to the right of that left, replace empty spots w/ 0's
+			# i is current tile index
+			# j is next tile index
+			# load current tile
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			# Load args to load tile
+			# $a0 still has board
+			# $a1 still has the row
+			move $a2, 
+			addi $s2, $s2, 1 # Increment j
+		for_slide_row_left_inner_done:
+		addi $s0, $s0, 1
+		j for_slide_row_left_outer
+		
+	for_slide_row_left_outer_done:
+	
+	
+	
+	
+	# look at current tile, if right is 0, shift it | if right is not 0, try to merge. if cannot merge, continue. if can merge, merge. replace everything to left w/ 0's. if current is 0, continue.

@@ -1,9 +1,9 @@
 .data
 .align 2
-row1: .word 0
-col1: .word 1
-row2: .word 0
-col2: .word 1
+row1: .word 2
+col1: .word 6
+row2: .word 2
+col2: .word 7
 board:
 .byte 4
 .byte 8
@@ -24,6 +24,9 @@ jal can_be_merged
 addi $sp, $sp, 4
 
 # Write your own code to print the return value.
+move $a0, $v0
+li $v0, 1
+syscall
 
 li $v0, 10
 syscall

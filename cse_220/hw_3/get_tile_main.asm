@@ -1,7 +1,7 @@
 .data
 .align 2
 row: .word 3
-col: .word 1
+col: .word 15
 board:
 .byte 8
 .byte 7
@@ -16,6 +16,9 @@ lw $a2, col
 jal get_tile
 
 # Write your own code to print the return value.
+move $a0, $v0
+li $v0, 1
+syscall
 
 li $v0, 10
 syscall
