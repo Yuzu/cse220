@@ -1,6 +1,6 @@
 .data
 .align 2
-row: .word 0
+row: .word 3
 direction: .word -1
 board:
 .byte 5

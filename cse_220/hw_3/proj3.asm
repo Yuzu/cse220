@@ -1016,6 +1016,16 @@ slide_row:
 	# $s5 stores tile after current one
 	# $s6 has the return value. Defaults to 0.
 	
+	# Preserve $s registers
+	addi $sp, $sp, -28
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	sw $s4, 16($sp)
+	sw $s5, 20($sp)
+	sw $s6, 24($sp)
+	
 	# nested for loop ( i < len - 1 and j = i up to j < len)
 	# shift left = look at current tile | if left is 0, move it | if left is not 0, look at right tile. if can merge, merge into current tile. shift everything to the right of that left, replace empty spots w/ 0's
 	
@@ -1031,6 +1041,14 @@ slide_row:
 	invalid_slide_direction:
 	invalid_slide_row:
 		li $v0, -1
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $s3, 12($sp)
+		lw $s4, 16($sp)
+		lw $s5, 20($sp)
+		lw $s6, 24($sp)
+		addi $sp, $sp, 28
 		jr $ra
 		
 	valid_direction_and_row:
@@ -1175,6 +1193,130 @@ slide_row:
 			j for_slide_row_left
 			
 		for_slide_row_left_check_merge:
+		
+			# CHECK IF VALUE TO LEFT IS MERGEABLE OR NOT. If not then we look to the right.
+			
+			# ***** get value to the left of current ***** 
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			# $a0 still has board
+			# $a1 still has the row
+			move $a2, $s2 # #a2 needs the column
+		
+			jal get_tile
+		
+			# restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# $v0 has the tile value.
+			move $s4, $v0 # store previous tile value in $s4
+			
+			# ***** check if current tile and previous tile can be merged. *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			# $a0 still has board
+			move $a1, $a1 # $a1 needs row of 1st tile (basically $a1)
+			move $a2, $s0 # $a2 needs col of current tile ( i )
+			
+			move $a3, $a1 # $a3 needs row of 2nd tile (basically $a1)
+			
+			addi $sp, $sp, -4 # make space for additional arg
+			move $t0, $s0
+			addi $t0, $t0, -1
+			sw $t0 ,0($sp)# 0($sp) needs col of previous tile ( i - 1)
+			 
+			 jal can_be_merged
+			 
+			 addi $sp, $sp, 4 # get rid of additional arg
+			 # restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# merge value stored in $v0
+			bgtz $v0, for_slide_row_left_merge_left
+			
+			
+			# otherwise check to the right.
+			j for_slide_row_left_merge_right
+			
+			
+			# merge to the left insead of the right.
+			for_slide_row_left_merge_left:
+				# Update return value.
+				li $s6, 1
+				
+				# ***** set previous tile to merge value *****
+				
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+		
+				# $a0 still has board
+				# $a1 has row 
+				move $a2, $s0 # $a2 needs previous column ( i - 1)
+				addi $a2, $a2, -1
+				move $a3, $v0 # $a3 will write the merge value.
+		
+				jal set_tile
+		
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# ***** set current tile to 0 *****
+			
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+		
+				# $a0 still has board
+				# $a1 has row 
+				move $a2, $s0 # $a2 needs current column ($s0)
+				li $a3, 0 # write 0.
+		
+				jal set_tile
+		
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# Increment and loop over.
+				addi $s0, $s0, 1
+				addi $s2, $s2, 1
+				j for_slide_row_left
+				
+			for_slide_row_left_merge_right:
 			# Check if value to the right is mergeable or not. If not, we just continue on. If so, we merge them.
 			# Next column is stored in j, we can use that. ($s2)
 			# ***** get value to the right of current *****
@@ -1295,6 +1437,18 @@ slide_row:
 			
 	for_slide_row_left_done:
 	move $v0, $s6
+	
+	# Restore $s registers
+	
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	lw $s4, 16($sp)
+	lw $s5, 20($sp)
+	lw $s6, 24($sp)
+	addi $sp, $sp, 28
+	
 	jr $ra
 	
 	# Slide right code
@@ -1440,6 +1594,7 @@ slide_row:
 				j for_slide_row_right
 				
 			for_slide_row_right_check_merge:
+				
 				# Check if value to the right is mergeable or not. If not, we just continue on. If so, we merge them.
 				# Next column is stored in j, we can use that. ($s2)
 			
@@ -1561,11 +1716,732 @@ slide_row:
 					j for_slide_row_right
 	for_slide_row_right_done:
 	move $v0, $s6
+	
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	lw $s4, 16($sp)
+	lw $s5, 20($sp)
+	lw $s6, 24($sp)
+	addi $sp, $sp, 28
 	jr $ra
 
 # Part VII
 slide_col:
-jr $ra
+	# $a0 has board
+	# $a1 has col to shift
+	# $a2 has direction, -1 is up, 1 is down
+	
+	# $s0 is "i"
+	# $s1 is loop controller, # of columns
+	# $s2 is j, to keep track of hitting end of loop
+	# $s3 stores current tile
+	# $s4 stores tile before current one
+	# $s5 stores tile after current one
+	# $s6 has the return value. Defaults to 0.
+	
+	# shift up = traverse top down
+	# shift down = traverse bottom up
+	
+	li $t0, 1 
+	abs $t1, $a2 # store abs value of shift direction in $t1 ( 1 -> 1 and -1 -> 1)
+	bne $t0, $t1, invalid_slide_direction_column
+	
+	lb $t1, 1($a0) # load number of columns
+	bge $a1, $t1, invalid_slide_column # valid indices to shift is 0 -> len -1
+	
+	j valid_direction_and_column
+	
+	invalid_slide_direction_column:
+	invalid_slide_column:
+		li $v0, -1
+		jr $ra
+		
+	valid_direction_and_column:
+	li $t0, -1
+	beq $a2, $t0, slide_column_up
+	
+	li $t0, 1
+	beq $a2, $t0, slide_column_down
+	
+	slide_column_up:
+	
+	li $s0, 1 # $s0 is "i"
+	lb $s1, 0($a0) # $s1 is len ( # of rows), loop controller.
+	li $s2, 2 # start with i = 1, go until i + 1 = len ( use extra var j initialized to 2 and increment w/ i)
+	li $s6, 0
+	
+	for_slide_column_up:
+		bgt $s2, $s1, for_slide_column_up_done
+		# look at current tile | if up is 0, move it | if up is not 0, look down. if can merge, merge into current tile, and set below tile to 0 cascading will deal w/ rest | if current is 0, continue.
+		# $s0 is i, current tile
+		# $s2 is j, below tile
+		# i - 1 is above tile
+		
+		
+		# ***** LOAD CURRENT TILE *****
+		
+		# preserve args
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+			
+		# $a0 still has board
+		move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+		move $a1, $s0 # $a1 needs row, we'll pass it $s0 ( current tile)
+		
+		jal get_tile
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		
+		# $v0 has the tile value.
+		move $s3, $v0
+		
+		beqz $s3, for_slide_column_up_zero_tile
+		j for_slide_column_up_non_zero_tile
+		
+		for_slide_column_up_zero_tile:
+			# Increment and continue.
+			addi $s0, $s0, 1
+			addi $s2, $s2, 1
+			j for_slide_column_up
+		
+		for_slide_column_up_non_zero_tile:
+		
+		# ***** LOAD ABOVE TILE *****
+		
+		# preserve args
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+		
+		# $a0 still has board
+		move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+		move $a1, $s0 # $a1 needs the tile above so we pass it i ($s0) - 1
+		addi $a1, $a1, -1 # Look at above tile
+		
+		jal get_tile
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		
+		# $v0 has the tile value.
+		move $s4, $v0
+		
+		# If previous tile is 0, shift current tile up and set current to 0. This will repeat next loop since the new previous will be 0.
+		beqz $s4, for_slide_column_up_cascading_zeros
+		
+		# otherwise, we check if the value above/below is mergeable or not.
+		j for_slide_column_up_check_merge
+		
+			for_slide_column_up_cascading_zeros:
+			
+			# ***** Set above tile to current tile *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+		
+			# $a0 still has board
+			move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+			move $a1, $s0 
+			addi $a1, $a1, -1 # $a2 needs previous row.
+			move $a3, $s3 # write value in current tile
+			
+			jal set_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# ***** SET CURRENT TILE TO 0 *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+		
+			# $a0 still has board
+			move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+			move $a1, $s0 # writing to current tile
+			li $a3, 0 # needs to write 0
+			
+			jal set_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# increment i and j and loop over
+			addi $s0, $s0, 1
+			addi $s2, $s2, 1
+			j for_slide_column_up
+		
+		for_slide_column_up_check_merge:
+		
+			# Check if value above is mergeable or not with current.. If not, we just continue on. If so, we merge them.
+			
+			
+			# ***** check if current tile and above tile can be merged *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			
+			# $a0 still has board
+			move $a2, $a1 # $a2 needs col of current tile ( basically $a1)
+			
+			addi $sp, $sp, -4 # space for additional arg
+			sw $a1 0($sp) # 0($sp) needs col of above tile ( basically $a1)
+			
+			
+			move $a1, $s0# $a1 needs row of current tile  ( i )
+			move $a3, $s0# $a3 needs row of above tile ( i - 1)
+			addi $a3, $a3, -1
+			
+			jal can_be_merged
+			
+			addi $sp, $sp, 4 # get rid of additional arg
+			 # restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# merge value stored in $v0
+			
+			bgtz $v0, for_slide_column_up_merge_up
+			
+			# otherwise check below.
+			j for_slide_column_up_merge_down
+			
+			# merge up instead of down.
+			
+			for_slide_column_up_merge_up:
+			
+				# Update return value.
+				li $s6, 1
+				
+				# ***** set above tile to merge value *****
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+		
+				# $a0 still has board
+				
+				move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+				move $a1, $s0 
+				addi $a1, $a1, -1 # $a2 needs previous row.
+				move $a3, $v0 # write the merge value.
+				
+				jal set_tile
+				
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# ***** set current tile to 0 *****
+				
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+		
+				# $a0 still has board
+				move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+				move $a1, $s0 # load current row.
+				li $a3, 0 # write 0.
+				
+				jal set_tile
+				
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# Increment and loop over.
+				addi $s0, $s0, 1
+				addi $s2, $s2, 1
+				j for_slide_column_up
+				
+			for_slide_column_up_merge_down:
+			# otherwise we merge down. Set current tile to merge value, set below tile to 0.
+			
+			# make sure to check whether current and below are mergeable.
+			
+			# ***** CHECK WHETHER CURRENT AND BELOW CAN BE MERGED. *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			
+			# $a0 still has board
+			move $a2, $a1 # $a2 needs col of current tile ( basically $a1)
+			
+			addi $sp, $sp, -4 # space for additional arg
+			sw $a1 0($sp) # 0($sp) needs col of below tile ( basically $a1)
+			
+			
+			move $a1, $s0 # $a1 needs row of current tile  ( i )
+			move $a3, $s2 # $a3 needs row of below tile ( i + 1, $s2)
+			
+			jal can_be_merged
+			
+			addi $sp, $sp, 4 # get rid of additional arg
+			 # restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# merge value stored in $v0
+			
+			bgtz $v0, for_slide_column_up_merge_down_continue
+			# otherwise increment and continue.
+			addi $s0, $s0, 1
+			addi $s2, $s2, 1
+			j for_slide_column_up
+			
+			for_slide_column_up_merge_down_continue:
+			# ***** set current tile to merge value. *****
+			li $s6, 1
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			# $a0 still has board
+			move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+			move $a1, $s0 # load current row.
+			move $a3, $v0 # write the merge value.
+				
+			jal set_tile
+				
+			# restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+				
+			# ***** set below tile to 0 *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			# $a0 still has board
+			move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+			move $a1, $s2 # load below tile
+			li $a3, 0 # write 0
+			
+			jal set_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# Increment and loop over.
+			addi $s0, $s0, 1
+			addi $s2, $s2, 1
+			j for_slide_column_up
+			
+	for_slide_column_up_done:
+	move $v0, $s6
+	# RESTORE $S REGISTERS
+	jr $ra
+	
+	
+	
+	slide_column_down:
+	# we're traversing tiles bottom to top.
+	
+	# Start from 2nd to last element ( element len - 2)
+	lb $s0, 0($a0) # load # of rows ( len of the column)
+	addi $s0, $s0, -2 # 2nd to last element
+	
+	li $s1, 0 # loop down to 0
+	# start w/ i = 2nd to last, go until i - 1 = len
+	move $s2, $s0
+	addi $s2, $s2, 1 # ( use extra var j initialized to last elem and decrement alongside i )
+	li $s6, 0 # return value
+
+	for_slide_column_down:
+		bltz $s0, for_slide_column_down_done
+		# $s0 = current tile
+		# $s2 = below tile
+		# $s0 - 1 = above tile
+		
+		# look at current tile | if below is 0, shift it | if below is not 0, check if bewow is mergeable | if not, check if above is mergeable | merge if can, prioritize downards merge | if cannot merge either or current is 0, continue.
+		
+		# ***** LOAD CURRENT TILE *****
+		
+		# preserve args
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+			
+		# $a0 still has board
+		move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+		move $a1, $s0 # $a1 needs row, we'll pass it $s0 ( current tile)
+		
+		jal get_tile
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		
+		# $v0 has the tile value.
+		move $s3, $v0
+		
+		beqz $s3, for_slide_column_down_zero_tile
+		j for_slide_column_down_non_zero_tile
+		
+		for_slide_column_down_zero_tile:
+			# decrement and continue.
+			addi $s0, $s0, -1
+			addi $s2, $s2, -1
+			j for_slide_column_down
+		
+		for_slide_column_down_non_zero_tile:
+		
+		# ***** LOAD BELOW TILE *****
+		
+		# preserve args
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+		
+		# $a0 still has board
+		move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+		move $a1, $s2 # $a1 needs the tile above so we pass it j ( $s2)
+		
+		jal get_tile
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		
+		# $v0 has the tile value.
+		move $s4, $v0
+		
+		# If below tile is 0, shift current tile down and set current to 0. This will repeat next loop since the new next will be 0.
+		beqz $s4, for_slide_column_down_cascading_zeros
+		
+		# otherwise we check if the value below/above is mergeable or not.
+		j for_slide_column_down_check_merge
+		
+			for_slide_column_down_cascading_zeros:
+			
+			# ***** set below tile to current tile *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			# $a0 still has board
+			move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+			move $a1, $s2
+			move $a3, $s3 # write value in current tile
+			
+			jal set_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# ***** set current tile to 0 *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+		
+			# $a0 still has board
+			move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+			move $a1, $s0 # writing to current tile
+			li $a3, 0 # needs to write 0
+			
+			jal set_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# decrement i and j and loop over
+			addi $s0, $s0, -1
+			addi $s2, $s2, -1
+			j for_slide_column_down
+		
+		for_slide_column_down_check_merge:
+			# check if value below is mergeable or not with current. if so, replace below w/ merge value and set current to 0
+			
+			# ***** check if current tile and below tile can be merged *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			
+			# $a0 still has board
+			move $a2, $a1 # $a2 needs col of current tile ( basically $a1)
+			
+			addi $sp, $sp, -4 # space for additional arg
+			sw $a1 0($sp) # 0($sp) needs col of below tile ( basically $a1)
+			
+			
+			move $a1, $s0 # $a1 needs row of current tile  ( i )
+			move $a3, $s2 # $a3 needs row of below tile ( $s2)
+			
+			jal can_be_merged
+			
+			addi $sp, $sp, 4 # get rid of additional arg
+			 # restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# merge value stored in $v0
+			
+			bgtz $v0, for_slide_column_down_merge_down
+			
+			# otherwise check below.
+			j for_slide_column_down_merge_up
+			
+			# merge down
+			
+			for_slide_column_down_merge_down:
+				
+				# Update return value.
+				li $s6, 1
+				
+				# ***** set below tile to merge value *****
+
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+		
+				# $a0 still has board
+				
+				move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+				move $a1, $s2 
+				move $a3, $v0 # write the merge value.
+				
+				jal set_tile
+				
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# ***** set current tile to 0 *****
+				
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+		
+				# $a0 still has board
+				move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+				move $a1, $s0 # load current row.
+				li $a3, 0 # write 0.
+				
+				jal set_tile
+				
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# decrement and loop over.
+				addi $s0, $s0, -1
+				addi $s2, $s2, -1
+				j for_slide_column_down
+				
+			for_slide_column_down_merge_up:
+				# check if value above is mergeable. if so, set current to merge value and above to 0.
+				
+				# ***** CHECK WHETHER CURRENT AND ABOVE CAN BE MERGED. *****
+				
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+			
+				# $a0 still has board
+				move $a2, $a1 # $a2 needs col of current tile ( basically $a1)
+			
+				addi $sp, $sp, -4 # space for additional arg
+				sw $a1 0($sp) # 0($sp) needs col of above tile ( basically $a1)
+			
+			
+				move $a1, $s0 # $a1 needs row of current tile  ( i )
+				move $a3, $s0 # $a3 needs row of above tile ( i - 1, $s0 - 1)
+				addi $a3, $a3, -1
+				
+				jal can_be_merged
+			
+				addi $sp, $sp, 4 # get rid of additional arg
+				 # restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+			
+				# merge value stored in $v0
+				bgtz $v0, for_slide_column_down_merge_up_continue
+				# otherwise decrement and continue.
+				addi $s0, $s0, -1
+				addi $s2, $s2, -1
+				j for_slide_column_down
+				
+				for_slide_column_down_merge_up_continue:
+					# ***** set current tile to merge value *****
+					li $s6, 1
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+			
+				# $a0 still has board
+				move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+				move $a1, $s0 # load current row.
+				move $a3, $v0 # write the merge value.
+				
+				jal set_tile
+				
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# ***** set above tile to 0 *****
+				
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+			
+				# $a0 still has board
+				move $a2, $a1 # $a2 should have column, currently stored in $a1 for shift_col function call so we move that first.
+				move $a1, $s0 # load above tile ( $s0 -1 )
+				addi $a1, $a1, -1
+				li $a3, 0 # write 0
+			
+				jal set_tile
+			
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# decrement and loop over.
+				addi $s0, $s0, -1
+				addi $s2, $s2, -1
+				j for_slide_column_down
+				
+				
+	for_slide_column_down_done:
+	move $v0, $s6
+	jr $ra
 
 # Part VIII
 slide_board_left:

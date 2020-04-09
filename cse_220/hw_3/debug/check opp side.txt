@@ -1,0 +1,123 @@
+# CHECK IF VALUE TO LEFT IS MERGEABLE OR NOT. If not then we look to the right.
+			
+			# ***** get value to the left of current ***** 
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			# $a0 still has board
+			# $a1 still has the row
+			move $a2, $s2 # #a2 needs the column
+		
+			jal get_tile
+		
+			# restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# $v0 has the tile value.
+			move $s4, $v0 # store previous tile value in $s4
+			
+			# ***** check if current tile and previous tile can be merged. *****
+			
+			# preserve args
+			addi $sp, $sp, -16
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $ra, 12($sp)
+			
+			# $a0 still has board
+			move $a1, $a1 # $a1 needs row of 1st tile (basically $a1)
+			move $a2, $s0 # $a2 needs col of current tile ( i )
+			
+			move $a3, $a1 # $a3 needs row of 2nd tile (basically $a1)
+			
+			addi $sp, $sp, -4 # make space for additional arg
+			move $t0, $s0
+			addi $t0, $t0, -1
+			sw $t0 ,0($sp)# 0($sp) needs col of previous tile ( i - 1)
+			 
+			 jal can_be_merged
+			 
+			 addi $sp, $sp, 4 # get rid of additional arg
+			 # restore args
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $ra, 12($sp)
+			addi $sp, $sp, 16
+			
+			# merge value stored in $v0
+			bgtz $v0, for_slide_row_left_merge_left
+			
+			
+			# otherwise check to the right.
+			j for_slide_row_left_merge_right
+			
+			
+			# merge to the left insead of the right.
+			for_slide_row_left_merge_left:
+				# Update return value.
+				li $s6, 1
+				
+				# ***** set previous tile to merge value *****
+				
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+		
+				# $a0 still has board
+				# $a1 has row 
+				move $a2, $s0 # $a2 needs previous column ( i - 1)
+				addi $a2, $a2, -1
+				move $a3, $v0 # $a3 will write the merge value.
+		
+				jal set_tile
+		
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# ***** set current tile to 0 *****
+			
+				# preserve args
+				addi $sp, $sp, -16
+				sw $a0, 0($sp)
+				sw $a1, 4($sp)
+				sw $a2, 8($sp)
+				sw $ra, 12($sp)
+		
+				# $a0 still has board
+				# $a1 has row 
+				move $a2, $s0 # $a2 needs current column ($s0)
+				li $a3, 0 # write 0.
+		
+				jal set_tile
+		
+				# restore args
+				lw $a0, 0($sp)
+				lw $a1, 4($sp)
+				lw $a2, 8($sp)
+				lw $ra, 12($sp)
+				addi $sp, $sp, 16
+				
+				# Increment and loop over.
+				addi $s0, $s0, 1
+				addi $s2, $s2, 1
+				j for_slide_row_left
+				
+			for_slide_row_left_merge_right:
