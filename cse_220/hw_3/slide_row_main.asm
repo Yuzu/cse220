@@ -15,6 +15,14 @@ main:
 la $a0, board
 lw $a1, row
 lw $a2, direction
+li $s0 -420
+li $s1 -420
+li $s2 -420
+li $s3 -420
+li $s4 -420
+li $s5 -420
+li $s6 -420
+li $s7 -420
 jal slide_row
 move $s7, $v0
 # Write your own code to print the return value and the contents of the board.

@@ -1,0 +1,139 @@
+la $t0, board
+li $t1, 7 # number of rows
+li $t2, 5# number of columns
+
+addi $t0, $t0, 2
+li $t3, 0  # i, row counter
+
+row_loop:
+	li $t4, 0  # j, column counter
+col_loop:
+	
+	lhu $s0, 0($t0)
+	
+	li $v0, 1
+	move $a0, $s0
+	syscall
+	
+	li $v0, 4
+	la $a0, space
+	syscall
+	
+	addi $t0, $t0, 2
+	addi $t4, $t4, 1  # j++
+	blt $t4, $t2, col_loop
+col_loop_done:
+	li $v0, 4
+	la $a0, newline
+	syscall
+addi $t3, $t3, 1  # i++
+blt $t3, $t1, row_loop
+
+row_loop_done:
+
+
+
+li $s4, 0 # row counter
+	
+	row_loop_sum1:
+		li $s5, 0 # j, column counter
+		
+		col_loop_sum1:
+		
+			# ***** load current tile *****
+			
+			# preserve args
+			addi $sp, $sp, -8
+			sw $a0, 0($sp)
+			sw $ra, 4($sp)
+			
+			# $a0 has board
+			move $a1, $s4 # $a1 needs row
+			move $a2, $s5 # $a2 needs column
+			
+			jal get_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $ra, 4($sp)
+			addi $sp, $sp, 8
+			
+			# current tile value in $v0
+			beqz $v0, sum1_zero_tile
+			
+			 # ***** load right hand side tile. *****
+			
+			# preserve args
+			addi $sp, $sp, -8
+			sw $a0, 0($sp)
+			sw $ra, 4($sp)
+			
+			# $a0 has board
+			move $a1, $s4 # $a1 needs row
+			move $a2, $s5 # $a2 needs column + 1
+			addi $a2, $a2, 1
+			
+			jal get_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $ra, 4($sp)
+			addi $sp, $sp, 8
+			
+			# right hand side tile value in $v0
+			beqz $v0, sum1_zero_tile
+			
+			sum1_zero_tile:
+				# 0 indicates a merge is possible. Increment sum1 and continue to next row.
+				addi $s0, $s0, 1 # increment sum1
+				j col_loop_sum1_done
+				
+			sum1_check_merge:
+			# check if this pair of tiles can be merged or not.
+			
+			# preserve args
+			addi $sp, $sp, -8
+			sw $a0, 0($sp)
+			sw $ra, 4($sp)
+			
+			# $a0 has board
+			move $a1, $s4 # $a1 needs row of current tile ( $s4 )
+			move $a2, $s5 # $a2 needs col of current tile ( $s5 )
+			
+			move $a3, $s4 # $a3 needs row of next tile ( $s4 )
+			
+			# 0($sp) needs col of next tile ( $s5 + 1)
+			move $t0, $s5
+			addi $t0, $t0, 1
+			addi $sp, $sp, -4
+			sw $t0, 0($sp)
+			
+			jal can_be_merged
+			
+			addi $sp, $sp, 4 # remove stack arg
+			
+			# restore args
+			
+			lw $a0, 0($sp)
+			lw $ra, 4($sp)
+			addi $sp, $sp, 8
+			
+			# look at if it can be merged - yes: increment and go to next row VS no: look at next pair
+			
+			bgez $v0, sum1_can_merge
+			j sum1_no_merge
+			
+			sum1_can_merge:
+				addi $s0, $s0, 1 # increment sum1
+				j col_loop_sum1_done
+			
+			sum1_no_merge:
+			addi $s5, $s5, 1 # j++, look at next column in this row.
+			blt $s5, $s3, col_loop_sum1
+		
+		col_loop_sum1_done:
+		
+		addi $s4, $s4, 1 # i ++, look at next row.
+		blt $s4, $s2, row_loop_sum1
+	
+	row_loop_sum1_done:

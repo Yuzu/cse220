@@ -14,7 +14,7 @@ load_game_file:
 	# $a1 stores the name of the file.
 	
 	# Preserve saved registers.
-	addi $sp, $sp, -20
+	addi $sp, $sp, -24
 	sw $s0, 0($sp) # Used as pointer to GameBoard
 	sw $s1, 4($sp) # Used to keep track of how many insertions we've made. If this is greater than 2, we are working w/ shorts instead of bytes.
 	sw $s2, 8($sp) # Used to store file descriptor
@@ -180,6 +180,14 @@ load_game_file:
 		jr $ra
 		
 	for_read_file_done:
+	addi $sp, $sp, 4 # Restore stack pointer
+		
+	# Restore stack args
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	
 	addi $s5, $s5, -2 # Subtract 2 to account for the 2 args we inserted.
 	move $v0, $s5
 	
@@ -203,7 +211,7 @@ load_game_file:
 	lw $s3, 12($sp) # Used as running sum.
 	lw $s4, 16($sp) # Used to keep track of magnitude of places (ones, tens, hundreds, etc)
 	lw $s5, 20($sp) # Running sum to return.
-	addi $sp, $sp, 20
+	addi $sp, $sp, 24
 	
 	jr $ra
 
@@ -1741,6 +1749,16 @@ slide_col:
 	# $s5 stores tile after current one
 	# $s6 has the return value. Defaults to 0.
 	
+	# Preserve $s registers
+	addi $sp, $sp, -28
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	sw $s4, 16($sp)
+	sw $s5, 20($sp)
+	sw $s6, 24($sp)
+	
 	# shift up = traverse top down
 	# shift down = traverse bottom up
 	
@@ -1756,6 +1774,14 @@ slide_col:
 	invalid_slide_direction_column:
 	invalid_slide_column:
 		li $v0, -1
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $s3, 12($sp)
+		lw $s4, 16($sp)
+		lw $s5, 20($sp)
+		lw $s6, 24($sp)
+		addi $sp, $sp, 28
 		jr $ra
 		
 	valid_direction_and_column:
@@ -2101,7 +2127,14 @@ slide_col:
 			
 	for_slide_column_up_done:
 	move $v0, $s6
-	# RESTORE $S REGISTERS
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	lw $s4, 16($sp)
+	lw $s5, 20($sp)
+	lw $s6, 24($sp)
+	addi $sp, $sp, 28
 	jr $ra
 	
 	
@@ -2441,27 +2474,551 @@ slide_col:
 				
 	for_slide_column_down_done:
 	move $v0, $s6
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	lw $s4, 16($sp)
+	lw $s5, 20($sp)
+	lw $s6, 24($sp)
+	addi $sp, $sp, 28
 	jr $ra
 
 # Part VIII
 slide_board_left:
-jr $ra
+	# $a0 has board
+	
+	# $s0 will be used as "i" in for-loop
+	# $s1 will store upper-bound of for-loop.
+	# $s2 will be a running sum for the return value.
+	
+	addi $sp, $sp, -12
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	
+	li $s0, 0
+	lb $s1, 0($a0) # upper bound is number of rows.
+	li $s2, 0 # initialize running sum
+	
+	for_slide_board_left:
+		beq $s0, $s1, for_slide_board_left_done
+		
+		# Preserve args
+		addi $sp, $sp, -8
+		sw $a0, 0($sp)
+		sw $ra, 4($sp)
+		
+		# Set up args to call slide_row
+		# $a0 still has board
+		move $a1, $s0 # $a1 (row to shift) is i
+		li $a2, -1 # direction for left is -1
+		
+		jal slide_row
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $ra, 4($sp)
+		addi $sp, $sp, 8
+		
+		add $s2, $s2, $v0 # increment running sum
+		
+		addi $s0, $s0, 1
+		j for_slide_board_left
+		
+	for_slide_board_left_done:
+	move $v0, $s2
+	
+	# restore $s registers
+	
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	addi $sp, $sp, 12
+	
+	jr $ra
 
 # Part IX
 slide_board_right:
-jr $ra
+	# $a0 has board
+	
+	# $s0 will be used as "i" in for-loop
+	# $s1 will store upper-bound of for-loop.
+	# $s2 will be a running sum for the return value.
+	
+	addi $sp, $sp, -12
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	
+	li $s0, 0
+	lb $s1, 0($a0) # upper bound is number of rows.
+	li $s2, 0 # initialize running sum
+	
+	for_slide_board_right:
+		beq $s0, $s1, for_slide_board_right_done
+		
+		# Preserve args
+		addi $sp, $sp, -8
+		sw $a0, 0($sp)
+		sw $ra, 4($sp)
+		
+		# Set up args to call slide_row
+		# $a0 still has board
+		move $a1, $s0 # $a1 (row to shift) is i
+		li $a2, 1 # direction for right is 1
+		
+		jal slide_row
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $ra, 4($sp)
+		addi $sp, $sp, 8
+		
+		add $s2, $s2, $v0 # increment running sum
+		
+		addi $s0, $s0, 1
+		j for_slide_board_right
+		
+	for_slide_board_right_done:
+	move $v0, $s2
+	
+	# restore $s registers
+	
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	addi $sp, $sp, 12
+	
+	jr $ra
 
 # Part X
 slide_board_up:
-jr $ra
+	# $a0 has board
+	
+	# $s0 will be used as "i" in for-loop
+	# $s1 will store upper-bound of for-loop.
+	# $s2 will be a running sum for the return value.
+	
+	addi $sp, $sp, -12
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	
+	li $s0, 0
+	lb $s1, 1($a0) # upper bound is number of columns
+	li $s2, 0 # initialize running sum
+	
+	for_slide_board_up:
+		beq $s0, $s1, for_slide_board_up_done
+		
+		# Preserve args
+		addi $sp, $sp, -8
+		sw $a0, 0($sp)
+		sw $ra, 4($sp)
+		
+		# Set up args to call slide_column
+		# $a0 still has board
+		move $a1, $s0 # $a1 (column to shift) is i
+		li $a2, -1 # direction for up is -1
+		
+		jal slide_col
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $ra, 4($sp)
+		addi $sp, $sp, 8
+		
+		add $s2, $s2, $v0 # increment running sum
+		
+		addi $s0, $s0, 1
+		j for_slide_board_up
+		
+	for_slide_board_up_done:
+	move $v0, $s2
+	
+	# restore $s registers
+	
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	addi $sp, $sp, 12
+	
+	jr $ra
 
 # Part XI
 slide_board_down:
-jr $ra
+# $a0 has board
+	
+	# $s0 will be used as "i" in for-loop
+	# $s1 will store upper-bound of for-loop.
+	# $s2 will be a running sum for the return value.
+	
+	addi $sp, $sp, -12
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	
+	li $s0, 0
+	lb $s1, 1($a0) # upper bound is number of columns
+	li $s2, 0 # initialize running sum
+	
+	for_slide_board_down:
+		beq $s0, $s1, for_slide_board_down_done
+		
+		# Preserve args
+		addi $sp, $sp, -8
+		sw $a0, 0($sp)
+		sw $ra, 4($sp)
+		
+		# Set up args to call slide_column
+		# $a0 still has board
+		move $a1, $s0 # $a1 (column to shift) is i
+		li $a2, 1 # direction for down is 1
+		
+		jal slide_col
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $ra, 4($sp)
+		addi $sp, $sp, 8
+		
+		add $s2, $s2, $v0 # increment running sum
+		
+		addi $s0, $s0, 1
+		j for_slide_board_down
+		
+	for_slide_board_down_done:
+	move $v0, $s2
+	
+	# restore $s registers
+	
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	addi $sp, $sp, 12
+	
+	jr $ra
 
 # Part XII
 game_status:
-jr $ra
+	# $a0 has board
+	
+	# use $s0 as running sum for sum1
+	# use $s1 as running sum for sum2
+	addi $sp, $sp, -24
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	sw $s4, 16($sp)
+	sw $s5, 20($sp)
+	# loop through the board
+	# if we see 49,152 once, we boot out immediately and return -2, -2
+	# keep running sum of 0's. if we don't have any then game over, we return -1, -1
+	
+	move $t0, $a0 # use $t0 as pointer to board
+	
+	lb $t1, 0($t0) # number of rows
+	lb $t2, 1($t0) # number of columns
+	
+	li $t5, 0 # COUNTER FOR ZERO FREQUENCY.
+	li $t6, 49152 # WINNING VALUE
+	
+	addi $t0, $t0, 2
+	li $t3, 0  # i, row counter
+
+	row_loop:
+		li $t4, 0  # j, column counter
+	col_loop:
+	
+		lhu $t7, 0($t0)
+		
+		beq $t7, $t6, winning_value
+		beqz $t7, zero_value
+		j normal_value
+		
+		winning_value:
+			li $v0, -2
+			li $v1, -2
+			# restore $s args
+			lw $s0, 0($sp)
+			lw $s1, 4($sp)
+			lw $s2, 8($sp)
+			lw $s3, 12($sp)
+			lw $s4, 16($sp)
+			lw $s5, 20($sp)
+			addi $sp, $sp, 24
+			jr $ra
+		
+		zero_value:
+		addi $t5, $t5, 1
+		
+		normal_value:
+		addi $t0, $t0, 2
+		addi $t4, $t4, 1  # j++
+		blt $t4, $t2, col_loop
+	col_loop_done:
+	addi $t3, $t3, 1  # i++
+	blt $t3, $t1, row_loop
+
+	row_loop_done:
+	
+	beqz $t5, losing_board
+	j check_shifts
+	
+	losing_board:
+		li $v0, -1
+		li $v1, -1
+		# restore $s args
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $s3, 12($sp)
+		lw $s4, 16($sp)
+		lw $s5, 20($sp)
+		addi $sp, $sp, 24
+		jr $ra
+		
+	check_shifts:
+	# ***** find out sum1 and sum2 *****
+	# sum1 = # of shiftable rows = $s0
+	# sum2 = # of shiftable columns = $s1
+	
+	# ***** FIND SUM 1 *****
+	li $s0, 0
+	# loop over rows -> look at pairs with get_tile -> if any of them are 0, we increment and continue to the next row. -> otherwise we check if they can be merged -> yes: increment and go to next row VS no: look at next pair
+	
+	lb $s2, 0($a0) # num of rows
+	lb $s3, 1($a0) # num of columns
+	addi $s3, $s3, -1 # we look 1 ahead so we don't wanna hit out of bounds.
+	
+	li $s4, 0 # row counter
+	
+	row_loop_sum1:
+		li $s5, 0 # j, column counter
+		
+		col_loop_sum1:
+		
+			# ***** load current tile *****
+			
+			# preserve args
+			addi $sp, $sp, -8
+			sw $a0, 0($sp)
+			sw $ra, 4($sp)
+			
+			# $a0 has board
+			move $a1, $s4 # $a1 needs row
+			move $a2, $s5 # $a2 needs column
+			
+			jal get_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $ra, 4($sp)
+			addi $sp, $sp, 8
+			
+			# current tile value in $v0
+			beqz $v0, sum1_zero_tile
+			
+			 # ***** load right hand side tile. *****
+			
+			# preserve args
+			addi $sp, $sp, -8
+			sw $a0, 0($sp)
+			sw $ra, 4($sp)
+			
+			# $a0 has board
+			move $a1, $s4 # $a1 needs row
+			move $a2, $s5 # $a2 needs column + 1
+			addi $a2, $a2, 1
+			
+			jal get_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $ra, 4($sp)
+			addi $sp, $sp, 8
+			
+			# right hand side tile value in $v0
+			beqz $v0, sum1_zero_tile
+			j sum1_check_merge
+			
+			sum1_zero_tile:
+				# 0 indicates a merge is possible. Increment sum1 and continue to next row.
+				addi $s0, $s0, 1 # increment sum1
+				j col_loop_sum1_done
+				
+			sum1_check_merge:
+			# check if this pair of tiles can be merged or not.
+			
+			# preserve args
+			addi $sp, $sp, -8
+			sw $a0, 0($sp)
+			sw $ra, 4($sp)
+			
+			# $a0 has board
+			move $a1, $s4 # $a1 needs row of current tile ( $s4 )
+			move $a2, $s5 # $a2 needs col of current tile ( $s5 )
+			
+			move $a3, $s4 # $a3 needs row of next tile ( $s4 )
+			
+			# 0($sp) needs col of next tile ( $s5 + 1)
+			move $t0, $s5
+			addi $t0, $t0, 1
+			addi $sp, $sp, -4
+			sw $t0, 0($sp)
+			
+			jal can_be_merged
+			
+			addi $sp, $sp, 4 # remove stack arg
+			
+			# restore args
+			
+			lw $a0, 0($sp)
+			lw $ra, 4($sp)
+			addi $sp, $sp, 8
+			
+			# look at if it can be merged - yes: increment and go to next row VS no: look at next pair
+			
+			bgez $v0, sum1_can_merge
+			j sum1_no_merge
+			
+			sum1_can_merge:
+				addi $s0, $s0, 1 # increment sum1
+				j col_loop_sum1_done
+			
+			sum1_no_merge:
+			addi $s5, $s5, 1 # j++, look at next pair in this row.
+			blt $s5, $s3, col_loop_sum1
+		
+		col_loop_sum1_done:
+		
+		addi $s4, $s4, 1 # i ++, look at next row.
+		blt $s4, $s2, row_loop_sum1
+	
+	row_loop_sum1_done:
+	
+	# ***** FIND SUM 2 *****
+	li $s1, 0
+	# loop over columns -> look at pairs with get_tile -> if any of them are 0, we increment and continue to the next column. -> otherwise we check if they can be merged -> yes: increment and go to next column VS no: look at next pair
+	
+	lb $s2, 0($a0) # num of rows
+	lb $s3, 1($a0) # num of columns
+	addi $s2, $s2, -1 # we look 1 ahead so we don't wanna hit out of bounds.
+	
+	li $s4, 0 # column counter
+	
+	column_loop_sum2:
+		li $s5, 0 # j, row counter
+		
+		row_loop_sum2:
+			# ***** load current tile *****
+			
+			# preserve args
+			addi $sp, $sp, -8
+			sw $a0, 0($sp)
+			sw $ra, 4($sp)
+			
+			# $a0 has board
+			move $a1, $s5 # $a1 needs row
+			move $a2, $s4 # $a2 needs column ( constant in the inner loop)
+			
+			jal get_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $ra, 4($sp)
+			addi $sp, $sp, 8
+			
+			# current tile value in $v0
+			beqz $v0, sum2_zero_tile
+			
+			# ***** load below tile *****
+			
+			# preserve args
+			addi $sp, $sp, -8
+			sw $a0, 0($sp)
+			sw $ra, 4($sp)
+			
+			# $a0 has board
+			move $a1, $s5# $a1 needs row + 1
+			addi $a1, $a1, 1
+			move $a2, $s4# $a2 needs column ( remains constant within inner loop)
+			
+			jal get_tile
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $ra, 4($sp)
+			addi $sp, $sp, 8
+			
+			# below tile value in $v0
+			beqz $v0, sum2_zero_tile
+			j sum2_check_merge
+			
+			sum2_zero_tile:
+				# 0 indicates a merge is possible. Increment sum2 and continue to next column.
+				addi $s1, $s1, 1 # increment sum2
+				j row_loop_sum2_done
+			
+			sum2_check_merge:
+			# check if this pair can be merged or not.
+			
+			# preserve args
+			addi $sp, $sp, -8
+			sw $a0, 0($sp)
+			sw $ra, 4($sp)
+			
+			# $a0 has board
+			move $a1, $s5# $a1 needs row of current tile ($s5)
+			move $a2, $s4# $a2 needs col of current tile ($s4)
+			
+			move $a3, $s5 # $a3 needs row of below tile ($s5 + 1)
+			addi $a3, $a3, 1
+			
+			addi $sp, $sp, -4
+			sw $s4, 0($sp) # 0($sp) needs col of below tile ($s4)
+			
+			jal can_be_merged
+			
+			addi $sp, $sp, 4 # remove stack arg
+			
+			# restore args
+			lw $a0, 0($sp)
+			lw $ra, 4($sp)
+			addi $sp, $sp, 8
+			
+			# look at if it can be merged - yes: increment and go to next column VS no: look at next pair
+			
+			bgez $v0, sum2_can_merge
+			j sum2_no_merge
+			
+			sum2_can_merge:
+				addi $s1, $s1, 1 # increment sum2
+				j row_loop_sum2_done
+			
+			sum2_no_merge:
+				addi $s5, $s5, 1 # j++, look at next pair in this column.
+			blt $s5, $s2, row_loop_sum2
+		row_loop_sum2_done:
+		
+		addi $s4, $s4, 1 # look at next column
+		blt $s4, $s3, column_loop_sum2
+	
+	move $v0, $s0
+	move $v1, $s1
+	
+	# restore $s args
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	lw $s4, 16($sp)
+	lw $s5, 20($sp)
+	addi $sp, $sp, 24
+	
+	jr $ra
 
 #################### DO NOT CREATE A .data SECTION ####################
 #################### DO NOT CREATE A .data SECTION ####################

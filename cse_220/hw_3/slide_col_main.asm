@@ -1,7 +1,7 @@
 .data
 .align 2
-col: .word 5
-direction: .word 1
+col: .word 1
+direction: .word -1
 board:
 .byte 7
 .byte 5
@@ -15,6 +15,14 @@ main:
 la $a0, board
 lw $a1, col
 lw $a2, direction
+li $s0 -420
+li $s1 -420
+li $s2 -420
+li $s3 -420
+li $s4 -420
+li $s5 -420
+li $s6 -420
+li $s7 -420
 jal slide_col
 move $s7, $v0
 # Write your own code to print the return value and the contents of the board.

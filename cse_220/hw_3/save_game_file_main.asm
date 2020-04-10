@@ -15,6 +15,14 @@ jal load_game_file
 
 la $a0, board
 la $a1, filename2
+li $s0 -420
+li $s1 -420
+li $s2 -420
+li $s3 -420
+li $s4 -420
+li $s5 -420
+li $s6 -420
+li $s7 -420
 jal save_game_file
 
 li $v0, 10

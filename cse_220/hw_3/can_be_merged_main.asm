@@ -20,6 +20,14 @@ lw $t0, col2
 addi $sp, $sp, -4
 sw $t0, 0($sp)
 li $t0, 123456   # putting garbage in $t0 -- arg #5 is on the STACK
+li $s0 -420
+li $s1 -420
+li $s2 -420
+li $s3 -420
+li $s4 -420
+li $s5 -420
+li $s6 -420
+li $s7 -420
 jal can_be_merged
 addi $sp, $sp, 4
 
