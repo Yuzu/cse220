@@ -4,25 +4,25 @@ queue:
 .half 5  # size
 .half 8  # max_size
 # index 0
-.word 111  # id number
-.half 859  # fame
-.half 28  # wait_time
+.word 239  # id number
+.half 558  # fame
+.half 15  # wait_time
 # index 1
-.word 550  # id number
-.half 576  # fame
-.half 10  # wait_time
+.word 138  # id number
+.half 468  # fame
+.half 6  # wait_time
 # index 2
-.word 788  # id number
-.half 418  # fame
-.half 8  # wait_time
+.word 456  # id number
+.half 388  # fame
+.half 24  # wait_time
 # index 3
-.word 896  # id number
-.half 40  # fame
-.half 12  # wait_time
+.word 473  # id number
+.half 46  # fame
+.half 0  # wait_time
 # index 4
-.word 54  # id number
-.half 275  # fame
-.half 2  # wait_time
+.word 182  # id number
+.half 158  # fame
+.half 17  # wait_time
 # index 5
 .word 0  # id number
 .half 0  # fame
@@ -35,7 +35,7 @@ queue:
 .word 0  # id number
 .half 0  # fame
 .half 0  # wait_time
-customer_id: .word 788
+customer_id: .word 22
 
 .text
 .globl main
@@ -46,6 +46,11 @@ jal contains
 
 # We are late enough in the semester that you can take care of printing
 # the results of the function call.
+move $t0, $v0
+
+li $v0, 1
+move $a0, $t0
+syscall
 
 li $v0, 10
 syscall
