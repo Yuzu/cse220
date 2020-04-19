@@ -107,7 +107,7 @@ init_queue:
 	# set max_size to $a1
 	sh $a1, 0($t3)
 	addi $t3, $t3, 2
-	
+	li $t0, 0
 	 for_init_queue:
 	 	beq $t0, $t2, for_init_queue_done
 	 	
@@ -218,16 +218,497 @@ contains:
 	contains_not_present:
 		li $v0, -1
 		jr $ra
-jr $ra
 
 # Part V
 enqueue:
-jr $ra
+	# $a0 has the queue
+	# $a1 has a ptr to the customer to queue
+	
+	# $s0 used to store the inserted node we're looking at
+	# $s1 used to store the inserted node's current parent node.
+	
+	# $s2 has the inserted node's address
+	# $s3 has the inserted node's parent's address
+	
+	addi $sp, $sp, -16
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	
+	lh $t0, 0($a0) # load current size
+	lh $t1, 2($a0) # load max-size
+	
+	beq $t0, $t1, enqueue_invalid_insertion
+	# otherwise check if customer is already in the queue.
+	lw $t0, 0($a1) # Load customer ID
+	
+	# Preserve args
+	addi $sp, $sp, -12
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $ra, 8($sp)
+	
+	# $a0 still has queue
+	move $a1, $t0 # move customer ID to check for
+	jal contains
+	
+	# restore args
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	
+	bgez $v0, enqueue_invalid_insertion # function returns -1 if the customer ID doesn't exist in the queue. we want that.
+	j enqueue_valid_insertion
+	
+	enqueue_invalid_insertion:
+		
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $s3, 12($sp)
+		addi $sp, $sp, 16
+		
+		li $v0, -1
+		lb $v1, 0($a0)
+		jr $ra
+	
+	enqueue_valid_insertion:
+	
+	# insert elem at bottom most level, leftmost position ( first empty spot in array)
+	
+	move $t0, $a0 # use $t0 as ptr to queue.
+	
+	lh $t1, 0($t0) # load current queue size.
+	li $t2, 8 
+	mul $t1, $t1, $t2 # find insertion spot for customer
+	
+	addi $t0, $t0, 4 # look past size and max size
+	add $t0, $t0, $t1
+	# $t0 now has the correct insertion spot.
+	
+	# Preserve args
+	addi $sp, $sp, -12
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $ra, 8($sp)
+	
+	move $a0, $a1 # $a1 has the address to copy from
+	move $a1, $t0 # $t0 is the address to copy bytes to
+	li $a2, 8 # write 8 bytes at most.
+	
+	jal memcpy
+	
+	# restore args
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	
+	# look at node's parent. the current index of the inserted node is size (because we haven't incremented after inserting yet).
+	# parent node is current index / 3 (integer division). 
+	
+	lh $s0, 0($a0) # load index of inserted node into $s0
+
+	li $s2, 0
+	li $s3, 0
+	
+	for_enqueue_swap:
+		move $t0, $a0 # use $t0 as ptr to queue.
+		addi $t0, $t0, 4 # look past size and max_size
+		
+		li $t1, 3
+		div $s0, $t1 # inserted node / 3
+		
+		mflo $s1 # store parent index in $s1
+		
+		# compare weights of the two nodes.
+		
+		li $t8, 8 # mult by 8 to get address offset.
+		
+		mul $t2, $s0, $t8 # store inserted offset in $t2
+		mul $t3, $s1, $t8 # store parent offset in $t3
+		addi $t2, $t2, 4 # ignore queue dimensions
+		addi $t3, $t3, 4 
+		
+		# store inserted node's address in $s2
+		move $s2, $a0
+		add $s2, $s2, $t2
+		
+		# store parent's address in $s3
+		
+		move $s3, $a0
+		add $s3, $s3, $t3
+		
+		
+		addi $sp, $sp, -12
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $ra, 8($sp)
+		
+		move $a0, $s2
+		move $a1, $s3
+		
+		jal compare_to
+		
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $ra, 8($sp)
+		addi $sp, $sp, 12
+		
+		# if inserted > parent, return value will be 1.
+		bgtz $v0, enqueue_swap_needed
+		
+		# no swap means node is in the correct position, and we're done.
+		j for_enqueue_swap_done
+		
+		enqueue_swap_needed:
+			# need to swap the two nodes.
+			# copy parent node to current address, but that means inserted node is overwritten, so -> (next line)
+			# copy $a1 ( has customer struct) the parent address.
+			
+			
+			# Copy parent node to inserted node's address.
+			addi $sp, $sp, -12
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $ra, 8($sp)
+			
+			move $a0, $s3 # source address = $s3
+			move $a1, $s2 # destination address = $s2
+			li $a2, 8
+			
+			jal memcpy
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $ra, 8($sp)
+			addi $sp, $sp, 12
+			
+			# write inserted node to parent address.
+			addi $sp, $sp, -12
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $ra, 8($sp)
+			
+			move $a0, $a1 # source address = $a1
+			move $a1, $s3 # destination address = $s3
+			li $a2, 8
+			
+			jal memcpy
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $ra, 8($sp)
+			addi $sp, $sp, 12
+			
+			# inserted node index and address is what was previously it's parent's.
+			move $s0, $s1
+			move $s2, $s3
+			
+			# next runthrough will recalculate the parent values, but check break condition first.
+			beqz $s1, for_enqueue_swap_done # when parent index = 0 we've hit the top of the heap.
+			j for_enqueue_swap
+		
+		
+	for_enqueue_swap_done:
+	
+	lb $t0, 0($a0) # load current size of queue
+	addi $t0, $t0, 1 # increment
+	sb $t0, 0($a0) # update queue size
+	
+	li $v0, 1
+	move $v1, $t0
+	
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	addi $sp, $sp, 16
+	jr $ra
 
 # Part VI
 heapify_down:
-jr $ra
+	# $s0 has index
+	# $s1 has queue size
+	
+	# $s2 has current index (left/mid/right)
+	# $s3 has current address (left/mid/right)
+	
+	# $s4 has largest index
+	# $s5 has largest address
+	
+	# $s6 used to keep track of return value.
+	
+	addi $sp, $sp, -28
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	sw $s4, 16($sp)
+	sw $s5, 20($sp)
+	sw $s6, 24($sp)
+	
+	bltz $a1, heapify_down_invalid_args
+	
+	lh $s1, 0($a0) # look at the queue size
+	bge $a1, $s1, heapify_down_invalid_args
+	j heapify_down_valid_args
+	
+	heapify_down_invalid_args:
+		li $v0, -1
+		
+		lw $s0, 0($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $s3, 12($sp)
+		lw $s4, 16($sp)
+		lw $s5, 20($sp)
+		lw $s6, 24($sp)
+		addi $sp, $sp, 28
+		
+		jr $ra
+		
+	heapify_down_valid_args:
+	
+	
+	move $s0, $a1 # store index in $s0
+	# $s1 has queue size
+	
+	move $t0, $a0 # use $t0 as ptr to queue
+	
+	# $s0 has index
+	# $s1 has queue size
+	
+	# $s2 has current index (left/mid/right)
+	# $s3 has current address (left/mid/right)
+	
+	# $s4 has largest index
+	# $s5 has largest address
+	
+	# $s6 used to keep track of return value.
+	
+	
+	li $s6, 0
+	while_heapify_down:
+		bge $s0, $s1, while_heapify_down_done
+		
+		# calculate left index = 3 * index + 1 and store in $s2
+		li $t9, 3
+		
+		mul $s2, $s0, $t9 # index * 3, stored in $s2
+		addi $s2, $s2, 1
+		
+		# calculate left address and store in $s3
+		
+		move $t0, $a0 # reset queue ptr
+		addi $t0, $t0, 4 # look past dimensions
+		li $t9, 8
+		mul $s3, $s2, $t9 # multiply left index by 8
+		add $s3, $s3, $t0 # store left address in $s3
+		
+		# largest = index, store it in $s4
+		move $s4, $s0
+		
+		# calculate largest address and store in $s5
+		move $t0, $a0 # reset queue ptr
+		addi $t0, $t0, 4 # look past dimensions
+		
+		li $t9, 8
+		mul $t5, $s4, $t9 # find address offset of largest index
+		add $s5, $t0, $t5 # set address of largest to $s5
+		
+		bge $s2, $s1, while_heapify_down_not_left
+			# if A[left] > A[largest] then largest = left
+			
+			# call compare_to 
+			addi $sp, $sp, -12
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $ra, 8($sp)
+			
+			move $a0, $s3 # left
+			move $a1, $s5 # largest
+			
+			jal compare_to
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $ra, 8($sp)
+			addi $sp, $sp, 12
+			
+			blez $v0, while_heapify_down_not_left
+				# otherwise return value of 1 means that we have a new max, set largest = left.
+				move $s4, $s2
+				move $s5, $s3
+				
+		while_heapify_down_not_left:
+		# calculate mid = 3 * index + 2 and store in $s2
+		li $t9, 3
+		mul $s2, $s0, $t9
+		addi $s2, $s2, 2
+		
+		# calculate mid address and store in $s3
+		move $t0, $a0 # reset queue ptr
+		addi $t0, $t0, 4 # look past dimensions
+		li $t9, 8
+		mul $s3, $s2, $t9 # multiply mid index by 8
+		add $s3, $s3, $t0 # store mid address in $s3
+		
 
+		bge $s2, $s1, while_heapify_down_not_mid
+		# if A[mid] > A[largest] then largest = mid
+			
+			# call compare_to 
+			addi $sp, $sp, -12
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $ra, 8($sp)
+			
+			move $a0, $s3 # mid
+			move $a1, $s5 # largest
+			
+			jal compare_to
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $ra, 8($sp)
+			addi $sp, $sp, 12
+			
+			blez $v0, while_heapify_down_not_mid
+				# otherwise return value of 1 means that we have a new max, set largest = mid
+				move $s4, $s2
+				move $s5, $s3
+				
+		while_heapify_down_not_mid:
+		# calculate right = 3 * index + 3 and store in $s2
+		li $t9, 3
+		mul $s2, $s0, $t9
+		addi $s2, $s2, 3
+		
+		# calculate right address and store in $s3
+		move $t0, $a0 # reset queue ptr
+		addi $t0, $t0, 4 # look past dimensions
+		li $t9, 8
+		mul $s3, $s2, $t9 # multiply right index by 8
+		add $s3, $s3, $t0 # store right address in $s3
+		
+		 bge $s2, $s1, while_heapify_down_check_largest
+		 # if A[right] > A[largest] then largest = right
+		 
+		 # call compare_to 
+			addi $sp, $sp, -12
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $ra, 8($sp)
+			
+			move $a0, $s3 # right
+			move $a1, $s5 # largest
+			
+			jal compare_to
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $ra, 8($sp)
+			addi $sp, $sp, 12
+			
+			blez $v0, while_heapify_down_check_largest
+				# otherwise return value of 1 means that we have a new max, set largest = mid
+				move $s4, $s2
+				move $s5, $s3
+		 
+		 while_heapify_down_check_largest:
+		 
+		 beq $s4, $s0, while_heapify_down_done
+		 # otherwise, largest != index
+		 
+		 # swap A[index] and A[largest]
+		 
+		 # find A[index] address and store in $s3
+		move $t0, $a0 # reset queue ptr
+		addi $t0, $t0, 4 # look past dimensions
+		li $t9, 8
+		mul $s3, $s0, $t9 # multiply index by 8
+		add $s3, $s3, $t0 # store address in $s3
+		
+		# address of largest already in $s5.
+		
+		# preserve args
+		addi $sp, $sp, -12
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $ra, 8($sp)
+		
+		# store values of largest on stack
+		addi $sp, $sp, -8
+		move $fp, $sp # use $fp as arg for second memcpy call.
+		
+		lw $t0, 0($s5) # load customer ID
+		lh $t1, 4($s5) # load customer fame
+		lh $t2, 6($s5) # load customer wait_time
+		
+		sw $t0, 0($fp) # store args
+		sh $t1, 4($fp)
+		sh $t2, 6($fp)
+		
+		# write index -> largest w/ memcpy
+		
+		move $a0, $s3 # write from index address
+		move $a1, $s5 # write to largest address
+		li $a2, 8 # write 8 bytes.
+		
+		jal memcpy
+		
+		addi $sp, $sp, 8 # look past the value stored on stack
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $ra, 8($sp)
+		addi $sp, $sp, 12
+		
+		# fp still points to the customer we pushed on the stack.
+		
+		# write largest -> index
+		
+		# preserve args
+		addi $sp, $sp, -12
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $ra, 8($sp)
+		
+		move $a0, $fp # write from largest address ( on stack currently)
+		move $a1, $s3 # write to index address ( still in $s3)
+		li $a2, 8 
+		
+		jal memcpy
+		
+		# restore args
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $ra, 8($sp)
+		addi $sp, $sp, 12
+		
+		 # set index = largest and loop over.
+		move $s0, $s4
+		addi $s6, $s6, 1 # increment number of swaps
+		j while_heapify_down
+		
+	while_heapify_down_done:
+	
+	move $v0, $s6
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	lw $s4, 16($sp)
+	lw $s5, 20($sp)
+	lw $s6, 24($sp)
+	addi $sp, $sp, 28
+	move $fp, $sp
+	jr $ra
+	
 # Part VII
 dequeue:
 jr $ra

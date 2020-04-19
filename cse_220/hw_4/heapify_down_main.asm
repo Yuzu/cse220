@@ -246,15 +246,30 @@ queue:
 index: .word 1
 
 
+
 .text
 .globl main
 main:
 la $a0, queue
 lw $a1, index
-jal heapify_down
+li $s0 -420
+li $s1 -420
+li $s2 -420
+li $s3 -420
+li $s4 -420
+li $s5 -420
+li $s6 -420
+li $s7 -420
 
+
+jal heapify_down
+move $t0, $v0
 # We are late enough in the semester that you can take care of printing
 # the results of the function call.
+
+li $v0, 1
+move $a0, $t0
+syscall
 
 li $v0, 10
 syscall

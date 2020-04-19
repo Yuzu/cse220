@@ -2,12 +2,12 @@
 .align 2
 c1:
 .word 1  # id number
-.half 5  # fame
-.half 10  # wait_time
+.half 5000  # fame
+.half 0  # wait_time
 c2:
 .word 2  # id number
 .half 5  # fame
-.half 10  # wait_time
+.half 60  # wait_time
 
 .text
 .globl main
