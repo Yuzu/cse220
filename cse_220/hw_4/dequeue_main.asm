@@ -33,15 +33,72 @@ dequeued_customer:  # garbage
 .half 1  # wait_time
 
 
+
+
+newline: .asciiz "\n"
+space: .asciiz  " "
+
 .text
 .globl main
 main:
 la $a0, queue
 la $a1, dequeued_customer
-jal enqueue
+jal dequeue
 
-# We are late enough in the semester that you can take care of printing
-# the results of the function call.
+la $t0, dequeued_customer
+lw $s1, 0($t0) # customer data
+lh $s2, 4($t0)
+lh $s3, 6($t0)
+move $s4, $v0 # return value
+
+li $v0, 1
+move $a0, $s1
+syscall
+
+li $v0, 4
+la $a0, newline
+syscall
+
+li $v0, 1
+move $a0, $s2
+syscall
+
+li $v0, 4
+la $a0, newline
+syscall
+
+li $v0, 1
+move $a0, $s3
+syscall
+
+li $v0, 4
+la $a0, newline
+syscall
+
+li $v0, 1
+move $a0, $s4
+syscall
+
+li $v0, 4
+la $a0, newline
+syscall
+
+# call contains and check if customer is still there.
+
+la $a0, queue
+li $a1, 346
+
+jal contains
+
+move $s5, $v0
+
+li $v0, 1
+move $a0, $s5
+syscall
+
+li $v0, 4
+la $a0, newline
+syscall
 
 li $v0, 10
 syscall

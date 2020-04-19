@@ -711,11 +711,170 @@ heapify_down:
 	
 # Part VII
 dequeue:
-jr $ra
+	# $a0 has queue
+	# $a1 has dequeued_customer
+	
+	# check if queue is empty
+	
+	lh $t0, 0($a0)
+	beqz $t0, dequeue_empty_queue
+	j dequeue_non_empty_queue
+	
+	dequeue_empty_queue:
+		li $v0, -1
+		jr $ra
+		
+	dequeue_non_empty_queue:
+	
+	# copy head of heap into $a1 using memcpy
+	
+	# preserve args
+	addi $sp, $sp, -12
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $ra, 8($sp)
+	
+	move $t0, $a0 # use $t0 as ptr to queue
+	addi $t0, $t0, 4 # look at 1st queue elem
+	move $a0, $t0 # $a0 needs src address, head of heap.
+	# $a1 needs destination address ( still in $a1 from the dequeue function call)
+	li $a2, 8 # write 8 bytes
+	
+	jal memcpy
+	
+	# restore args
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	
+	# copy last elem of heap into head.
+	
+	move $t0, $a0 # use $t0 as ptr to queue
+	addi $t1, $t0, 4 # store address of head of heap in $t1
+	
+	 move $t0, $a0 # use $t0 as ptr to queue
+	 lh $t2, 0($t0) # get queue size in $t2
+	 addi $t2, $t2, -1
+	 li $t8, 8 
+	 
+	 mul $t2, $t2, $t8 # queue size * 8 = address offset of last elem in $t2
+	 addi $t2, $t2, 4
+	 add $t2, $t0, $t2 # add offset to queue address, $t2 has address of last elem.
+	 
+	 # call memcpy to copy last elem to head.
+	 
+	 # preserve args
+	addi $sp, $sp, -12
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $ra, 8($sp)
+	
+	move $a0, $t2 # $a0 needs src address, last heap elem stored in $t2
+	move $a1, $t1 # $a1 needs destination address, the head of the heap stored in $t1
+	li $a2, 8 # write 8 bytes
+	
+	jal memcpy
+	
+	# restore args
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	
+	# decrement queue size.
+	
+	move $t0, $a0 # use $t0 as ptr to queue
+	lh $t1, 0($t0) # get queue size in $t1
+	addi $t1, $t1, -1
+	sh $t1, 0($t0) # store new queue size.
+	
+	# call heapify_down on index 0.
+	
+	# preserve args
+	addi $sp, $sp, -12
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $ra, 8($sp)
+	
+	# $a0 needs queue, still there.
+	li $a1, 0 # $a1 needs starting index, start at index 0.
+	
+	jal heapify_down
+	
+	# restore args
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	
+	move $t0, $a0 # use $t0 as ptr to queue
+	lh $t1, 0($t0) # get queue size in $t1
+	move $v0, $t1 # set return value
+	
+	jr $ra
 
 # Part VIII
 build_heap:
-jr $ra
+	# $a0 has queue
+	
+	# $s0 used to store res
+	# $s2 used to store index, same as i. 
+	
+	addi $sp, $sp, -8
+	sw $s0, 0($sp)
+	sw $s2, 0($sp)
+	
+	li $s0, 0 # res = 0
+	li $s2, 0
+	
+	li $t0, 3
+	lh $t1, 0($a0) # get queue size in $t1
+	
+	# index = (queue size - 1) / 3 : integer division
+	add $s2, $s2, $t1
+	addi $s2, $s2, -1 
+	div $s2, $t0
+	mflo $s2
+	
+	for_build_heap:
+		bltz $s2, for_build_heap_done
+		
+		# call heapify_down
+		
+		# preserve args
+		addi $sp, $sp, -12
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $ra, 8($sp)
+		
+		# $a0 still has queue
+		move $a1, $s2 # index is "i".
+		
+		jal heapify_down
+		
+		# restore args
+		
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $ra, 8($sp)
+		addi $sp, $sp, 12
+		
+		add $s0, $s0, $v0 # add return value to res
+		
+		addi $s2, $s2, -1
+		
+		j for_build_heap
+		
+	for_build_heap_done:
+	
+	move $v0, $s0
+	
+	
+	lw $s0, 0($sp)
+	lw $s2, 0($sp)
+	addi $sp, $sp, 88
+	jr $ra
 
 # Part IX
 increment_time:
