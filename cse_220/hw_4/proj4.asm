@@ -823,7 +823,7 @@ build_heap:
 	
 	addi $sp, $sp, -8
 	sw $s0, 0($sp)
-	sw $s2, 0($sp)
+	sw $s2, 4($sp)
 	
 	li $s0, 0 # res = 0
 	li $s2, 0
@@ -872,13 +872,100 @@ build_heap:
 	
 	
 	lw $s0, 0($sp)
-	lw $s2, 0($sp)
-	addi $sp, $sp, 88
+	lw $s2, 4($sp)
+	addi $sp, $sp, 8
 	jr $ra
 
 # Part IX
 increment_time:
-jr $ra
+	# $a0 has ptr to queue
+	# $a1 has delta_mins
+	# $a2 has fame_level
+	
+	# loop through queue and increment wait time of everyone by delta_mins
+	# also check fame, if fame is < fame_level we wanna add delta_mins to their fame.
+	
+	move $t0, $a0 # use $t0 as ptr to queue
+	
+	lh $t1, 0($t0) # load current queue size into $t1, we're gonna loop from 0 to that.
+	beqz $t1, increment_time_invalid_args
+	blez $a1, increment_time_invalid_args
+	blez $a2, increment_time_invalid_args
+	j increment_time_valid_args
+	
+	increment_time_invalid_args:
+		li $v0, -1
+		jr $ra
+	
+	increment_time_valid_args:
+	li $t2, 0 # "i" in for-loop
+	
+	addi $t0, $t0, 4 # look past dimensions
+	for_increment_time:
+		beq $t2, $t1, for_increment_time_done
+		
+		lh $t3, 6($t0) # load wait_time into $t3
+		add $t3, $t3, $a1 # increment wait time by delta_mins
+		sh $t3, 6($t0) # store new wait_time 
+		
+		lh $t3, 4($t0) # load fame into $t3
+		bge $t3, $a2, for_increment_time_only
+		# otherwise fame < fame_level so we add delta_mins to the fame.
+		add $t3, $t3, $a1
+		sh $t3, 4($t0)
+		for_increment_time_only:
+		
+		# look at next struct and loop over.
+		addi $t0, $t0, 8
+		addi $t2, $t2, 1
+		j for_increment_time
+		
+	for_increment_time_done:
+	
+	# call build_heap.
+	
+	# preserve args
+	addi $sp, $sp, -12
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $ra, 8($sp)
+	
+	jal build_heap
+	
+	# restore args
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	
+	# calculate avg wait time now.
+	
+	move $t0, $a0 # use $t0 as ptr to queue
+	
+	lh $t1, 0($t0) # load current queue size into $t1, we're gonna loop from 0 to that.
+	li $t2, 0 # "i" in for-loop
+	
+	addi $t0, $t0, 4 # look past dimensions
+	
+	li $t5, 0 # running sum of wait times.
+	# divide by $t1 at the end.
+	
+	for_increment_time_get_averages:
+		beq $t2, $t1, for_increment_time_get_averages_done
+		
+		lh $t3, 6($t0) # load wait_time into $t3
+		
+		add $t5, $t5, $t3 # add wait time to $t5
+		
+		# look at next struct and loop over.
+		addi $t0, $t0, 8
+		addi $t2, $t2, 1
+		j for_increment_time_get_averages
+		
+	for_increment_time_get_averages_done:
+	div $t5, $t1
+	mflo $v0
+	jr $ra
 
 # Part X
 admit_customers:
