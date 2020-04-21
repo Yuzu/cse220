@@ -1,0 +1,7 @@
+li $t5, 15
+li $t6, 0
+
+div $t5, $t6
+
+mflo $s0
+mfhi $s1
