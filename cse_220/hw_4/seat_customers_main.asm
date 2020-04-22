@@ -1,31 +1,13 @@
 .data
-num_admitted: .word 8
-budget: .word 20
+num_admitted: .word 2
+budget: .word 2
 admitted:
-.word 508  # id number
+.word 952  # id number
 .half 15  # fame
-.half 9  # wait_time
-.word 678  # id number
-.half 5  # fame
-.half 9  # wait_time
-.word 91  # id number
-.half 7  # fame
-.half 8  # wait_time
-.word 996  # id number
-.half 8  # fame
-.half 7  # wait_time
-.word 819  # id number
-.half 11  # fame
-.half 5  # wait_time
-.word 880  # id number
-.half 7  # fame
-.half 5  # wait_time
-.word 209  # id number
-.half 12  # fame
-.half 4  # wait_time
-.word 975  # id number
-.half 8  # fame
 .half 2  # wait_time
+.word 423  # id number
+.half 10  # fame
+.half 1  # wait_time
 
 
 newline: .asciiz "\n"

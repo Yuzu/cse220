@@ -1096,12 +1096,14 @@ seat_customers:
 	
 	blez $a1, seat_customers_invalid_args
 	blez $a2, seat_customers_invalid_args
+	j seat_customers_valid_args
 	
 	seat_customers_invalid_args:
 		li $v0, -1
 		li $v1, -1
 		jr $ra
-		
+	
+	seat_customers_valid_args:
 	addi $sp, $sp, -12
 	sw $s0, 0($sp)
 	sw $s1, 4($sp)
