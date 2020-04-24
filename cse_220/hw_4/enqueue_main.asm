@@ -33,6 +33,9 @@ customer:
 
 
 
+
+
+
 space: .asciiz " "
 .text
 .globl main

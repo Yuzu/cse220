@@ -247,6 +247,8 @@ index: .word 1
 
 
 
+
+
 .text
 .globl main
 main:
