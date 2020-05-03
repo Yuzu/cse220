@@ -1,39 +1,11 @@
-.data
-num: .word 37
-list:
-.word 5  # list's size
-.word node761 # address of list's head
-node168:
-.word 402
-.word 0
-node814:
-.word 978
-.word node248
-node761:
-.word 962
-.word node112
-node248:
-.word 526
-.word node168
-node112:
-.word 762
-.word node814
-
-
 newline: .asciiz "\n"
 
-.text
-.globl main
-main:
-la $a0, list
-lw $a1, num
-jal append
 
-# Write your own code here to verify that the function is correct.
+
 
 la $t0, list # load list address into $t0
 
-lw $t1, 0($a0) # load list size into $t1 
+lw $t1, 0($t0) # load list size into $t1 
 
 # print list size
 li $v0, 1
@@ -50,6 +22,7 @@ syscall
 
 la $t0, list # load list address into $t0
 lw $t1, 4($t0) # load head address into $t1.
+beqz $t1, for_print_LL_done
 for_print_LL:
 	lw $t2, 0($t1) # load node's num into $t2
 	
@@ -71,10 +44,3 @@ for_print_LL:
 	j for_print_LL
 	
 for_print_LL_done:
-	
-
-
-li $v0, 10
-syscall
-
-.include "proj5.asm"
