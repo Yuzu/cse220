@@ -325,6 +325,7 @@ remove:
 	lw $a0, 0($sp)
 	lw $a1, 4($sp)
 	lw $ra, 8($sp)
+	addi $sp, $sp, 12
 	
 	bltz $v0, remove_invalid_args
 	j remove_valid_args
@@ -391,11 +392,462 @@ remove:
 
 # Part 8
 create_deck:
-jr $ra
+	
+	addi $sp, $sp, -12
+	sw $s0, 0($sp) # use $s0 to store the list.
+	sw $s1, 4($sp) # $s1 and $s2 used for looping append.
+	sw $s2, 8($sp)
+	
+	# create 8 bytes required for the IntArrayList.
+	li $v0, 9
+	li $a0, 8
+	syscall
+	
+	# call init_list
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	move $a0, $v0
+	
+	jal init_list
+	
+	move $s0, $v0 # store newly initialized list in $s0.
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	li $s1, 0
+	li $s2, 52
+	for_init_deck:
+		beq $s1, $s2, for_init_deck_done
+		
+		addi $sp, $sp, -4
+		sw $ra, 0($sp)
+		
+		move $a0, $s0
+		li $a1, 0
+		
+		jal append
+		
+		lw $ra, 0($sp)
+		addi $sp, $sp, 4
+		
+		addi $s1, $s1, 1
+		j for_init_deck
+		
+	for_init_deck_done:
+	
+	# deck stored in $s0
+	
+	# ***** insert number cards. *****
+	li $t1, 2 # use $t1 to keep track of the rank
+	li $t2, 9 # use $t2 as upper-bound in loop.
+	
+	lw $t3, 4($s0) # load head address into $t3
+	
+	for_create_number_cards:
+		bgt $t1, $t2, for_create_number_cards_done
+		
+		# current node's address is in $t3.
+		
+		
+		# ***** create clubs card *****
+		li $t0, 68 # "D", cards face down by default.
+		sb $t0, 0($t3)
+		
+		move $t0, $t1 # store current rank in $t0
+		addi $t0, $t0, 48 # convert digit to ascii by adding 48.
+		sb $t0, 1($t3) # store card rank
+		
+		li $t0, 67 # "C" for clubs
+		sb $t0, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create diamonds card *****
+		li $t0, 68 # "D", cards face down by default.
+		sb $t0, 0($t3)
+		
+		move $t0, $t1 # store current rank in $t0
+		addi $t0, $t0, 48 # convert digit to ascii by adding 48.
+		sb $t0, 1($t3) # store card rank
+		
+		li $t0, 68 # "D" for diamonds
+		sb $t0, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create hearts card *****
+		li $t0, 68 # "D", cards face down by default.
+		sb $t0, 0($t3)
+		
+		move $t0, $t1 # store current rank in $t0
+		addi $t0, $t0, 48 # convert digit to ascii by adding 48.
+		sb $t0, 1($t3) # store card rank
+		
+		li $t0, 72 # "H" for hearts
+		sb $t0, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create spades card. *****
+		li $t0, 68 # "D", cards face down by default.
+		sb $t0, 0($t3)
+		
+		move $t0, $t1 # store current rank in $t0
+		addi $t0, $t0, 48 # convert digit to ascii by adding 48.
+		sb $t0, 1($t3) # store card rank
+		
+		li $t0, 83 # "S" for spades
+		sb $t0, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		addi $t1, $t1, 1 # increment rank.
+		j for_create_number_cards
+		
+	for_create_number_cards_done:
+	
+	# write higher order cards ( tens,  jack, queen, king, ace.)
+	# next node still in $t3, so we don't need to advance the pointer yet.
+	li $t0, 68 # "D", cards face down by default. this doesn't change.
+	
+	# *****create tens *****
+	li $t1, 84  # "T", rank of ten.
+	
+		# ***** create clubs card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 67 # "C" for clubs
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create diamonds card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 68 # "D" for diamonds
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create hearts card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 72 # "H" for hearts
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create spades card. *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 83 # "S" for spades
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+	
+	
+	# create jacks
+	li $t1, 74  # "J"
+	
+		# ***** create clubs card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 67 # "C" for clubs
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create diamonds card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 68 # "D" for diamonds
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create hearts card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 72 # "H" for hearts
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create spades card. *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 83 # "S" for spades
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+	# create queens
+	li $t1, 81  # "Q"
+	
+		# ***** create clubs card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 67 # "C" for clubs
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create diamonds card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 68 # "D" for diamonds
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create hearts card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 72 # "H" for hearts
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create spades card. *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 83 # "S" for spades
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+	# create kings
+	li $t1, 75  # "K"
+	
+		# ***** create clubs card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 67 # "C" for clubs
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create diamonds card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 68 # "D" for diamonds
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create hearts card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 72 # "H" for hearts
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create spades card. *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 83 # "S" for spades
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+	# create aces
+	li $t1, 65  # "A"
+	
+		# ***** create clubs card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 67 # "C" for clubs
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create diamonds card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 68 # "D" for diamonds
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create hearts card *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 72 # "H" for hearts
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+		
+		
+		# ***** create spades card. *****
+		sb $t0, 0($t3) # store face down
+		
+		sb $t1, 1($t3) # store card rank
+		
+		li $t2, 83 # "S" for spades
+		sb $t2, 2($t3)
+		
+		sb $0, 3($t3) # store null terminator.
+		
+		lw $t3, 4($t3) # load address of next node.
+	
+	move $v0, $s0
+	
+	lw $s0, 0($sp) # use $s0 to store the list.
+	lw $s1, 4($sp) # $s1 and $s2 used for looping append.
+	lw $s2, 8($sp)
+	addi $sp, $sp, 12
+	
+	jr $ra
 
 # Part 9
 draw_card:
-jr $ra
+	# $a0 has address of a deck.
+	
+	addi $sp, $sp, -4
+	sw $s0, 0($sp) # used to store head value before removing it.
+	
+	lw $t0, 0($a0) # load list size
+	
+	blez $t0, draw_card_invalid_args # list is empty.
+	j draw_card_valid_args
+	
+	draw_card_invalid_args:
+		li $v0, -1
+		li $v1, -1
+		jr $ra
+	
+	draw_card_valid_args:
+	# get head value then remove it (index 0) store in $s0.
+	
+	lw $t0, 4($a0) # load head address
+	lw $s0, 0($t0) # load num field.
+	
+	addi $sp, $sp, -8
+	sw $a0, 0($sp)
+	sw $ra, 4($sp)
+	
+	# $a0 still has list
+	move $a1, $s0 # value of num is what we wanna remove, this is guaranteed to remove the correct one. head = leftmost, and the value is there.
+	
+	jal remove
+	
+	lw $a0, 0($sp)
+	lw $ra, 4($sp)
+	addi $sp, $sp, 8
+	
+	li $v0, 0
+	move $v1, $s0
+	
+	lw $s0, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
 
 # Part 10
 deal_cards:
