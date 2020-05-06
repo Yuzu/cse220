@@ -818,6 +818,9 @@ draw_card:
 	j draw_card_valid_args
 	
 	draw_card_invalid_args:
+		lw $s0, 0($sp)
+		addi $sp, $sp, 4
+		
 		li $v0, -1
 		li $v1, -1
 		jr $ra
@@ -851,11 +854,242 @@ draw_card:
 
 # Part 10
 deal_cards:
-jr $ra
+	# $a0 has deck
+	# $a1 has array of ptrs to initialized arraylists representing players
+	# $a2 has the number of players in the game, len($a1).
+	# $a3 has number of cards each player should get.
+	
+	blez $a2, deal_cards_invalid_args # number of players <= 0
+	blez $a3, deal_cards_invalid_args # cards per player <= 0
+	
+	lw $t0, 0($a0) # load deck size
+	blez $a0, deal_cards_invalid_args # empty deck
+	
+	j deal_cards_valid_args
+	deal_cards_invalid_args:
+		li $v0, -1
+		jr $ra
+	
+	deal_cards_valid_args:
+	# use $s0, 1, 2, and 3.
+	addi $sp, $sp, -16
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	
+	# while loop - break conditions are: deck size = 0, OR each player has cards_per_player.
+	# DRAW CARD -> change to face up by shifting -> APPEND -> add player's total cards to running sum
+	# check if deck is empty, if not -> repeat for above rest of players OTHERWISE if empty -> break
+	# multiply num players by max_cards, compare to running sum. if they're ==, everyone has max amount -> break, OTHERWISE continue
+	
+	li $s3, 0 # running sum of total cards dealt, we're gonna return this value.
+	while_deal_cards:
+		
+		li $s0, 0 # inner loop
+		# loop through to number of players
+		
+		li $s1, 0 # running sum.
+		move $s2, $a1 # use $s2 as ptr to array of players.
+		
+		# deal each player a card.
+		for_deal_cards:
+		
+			lw $t0, 0($a0) # load deck size
+			beqz $t0, while_deal_cards_done # if deck is empty we're done
+			
+			beq $s0, $a2, for_deal_cards_done # we've dealt each player a card.
+			
+			# ***** draw a card. *****
+			
+			addi $sp, $sp, -20 
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $a3, 12($sp)
+			sw $ra, 16($sp)
+			
+			# $a0 still has the deck.
+			jal draw_card
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $a3, 12($sp)
+			lw $ra, 16($sp)
+			addi $sp, $sp, 20
+			
+			# ***** update card to be faced up *****
+			# card value stored in $v1.
+			addi $v1, $v1, 17 # shift ascii value from "D" to "U"
+			
+			
+			# *****append new card to player's linkedlist*****
+			# load current player pointer.
+			lw $t0, 0($s2) # store address of player's linkedlist here.
+			
+			# call append
+			
+			addi $sp, $sp, -20 
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $a2, 8($sp)
+			sw $a3, 12($sp)
+			sw $ra, 16($sp)
+			
+			move $a0, $t0 # appending to player's linked list, not the deck.
+			move $a1, $v1 # store updated value in $a1.
+			
+			jal append
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $a2, 8($sp)
+			lw $a3, 12($sp)
+			lw $ra, 16($sp)
+			addi $sp, $sp, 20
+			
+			# new size of list in $v0.
+			add $s1, $s1, $v0 # update running sum.
+			
+			# look at next player and loop over.
+			addi $s0, $s0, 1 # increment players looked at.
+			addi $s2, $s2, 4 # look at next player.
+			addi $s3, $s3, 1 # increment return value.
+			j for_deal_cards
+		
+		for_deal_cards_done:
+		
+		# multiply num players by max_cards, compare to running sum. if they're ==, everyone has max amount -> break, OTHERWISE continue
+		
+		mul $t0, $a2, $a3 # multiply num players by cards_per_players
+		beq $t0, $s1, while_deal_cards_done # max number of cards.
+		
+		# otherwise we continue.
+		j while_deal_cards
+		
+	while_deal_cards_done:
+	move $v0, $s3
+	
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	addi $sp, $sp, -16
+	
+	jr $ra
 
 # Part 11
 card_points:
-jr $ra
+	# $a0 has the integer of the card.
+	
+	# ***** check for valid orientation *****
+	move $t0, $a0 # store card value in $t0.
+	# shift left by 3 bytes and 3 to the right, only remaining value is the orientation of the card.
+	sll $t0, $t0, 24
+	srl $t0, $t0, 24
+	
+	li $t1, 68 # check for "D"
+	beq $t0, $t1, card_points_valid_orientation
+	
+	li $t1, 85 # check for "U"
+	beq $t0, $t1, card_points_valid_orientation
+	
+	# otherwise invalid orientation.
+	j card_points_invalid_card
+	
+	card_points_valid_orientation:
+	
+	
+	# ***** check for valid rank. *****
+	move $t0, $a0 # store card value in $t0.
+	# shift left by 2 bytes and 3 to the right, only remaining value is the card rank.
+	sll $t0, $t0, 16
+	srl $t0, $t0, 24
+	
+	# check for letter cards
+	li $t1, 84 # check for "T"
+	beq $t0, $t1, card_points_valid_rank
+	
+	li $t1, 74 # "check for "J"
+	beq $t0, $t1, card_points_valid_rank
+	
+	li $t1, 81 # "check for "Q"
+	beq $t0, $t1, card_points_valid_rank
+	
+	li $t1, 75 # "check for "K"
+	beq $t0, $t1, card_points_valid_rank
+	
+	li $t1, 65 # "check for "A"
+	beq $t0, $t1, card_points_valid_rank
+	
+	# check for number cards.
+	li $t1, 50 # check for "2"
+	blt $t0, $t1, card_points_invalid_card
+	
+	li $t1, 57 # check for "9"
+	bgt $t0, $t1, card_points_invalid_card
+	
+	card_points_valid_rank:
+
+	# ***** check for valid suit *****
+	move $t0, $a0 # store card value in $t0.
+	# shift right by 2 bytes, only remaining value is the suit.
+	srl $t0, $t0, 16 
+	
+	li $t1, 67 # "check for "C"
+	beq $t0, $t1, card_points_valid_suit
+	
+	li $t1, 68 # "check for "D"
+	beq $t0, $t1, card_points_valid_suit
+	
+	li $t1, 72 # "check for "H"
+	beq $t0, $t1, card_points_valid_suit
+	
+	li $t1, 83 # "check for "S"
+	beq $t0, $t1, card_points_valid_suit
+	
+	# otherwise invalid suit.
+	j card_points_invalid_card
+	
+	card_points_valid_suit:
+
+	# ***** check for hearts *****
+	# suit still in $t0, we can reuse the previous statements above.
+	
+	li $t1, 72 # "check for "H"
+	beq $t0, $t1, card_points_hearts
+	
+	li $t1, 83 # "check for "S"
+	beq $t0, $t1, card_points_spades
+	
+	# otherwise card value is 0.
+	card_points_nothing:
+	li $v0, 0 
+	jr $ra
+	
+	card_points_hearts:
+	li $v0, 1
+	jr $ra
+	
+	#  ***** check for queen of spades. *****
+	card_points_spades:
+		move $t0, $a0 # store card value in $t0.
+		
+		# shift left by 2 bytes and 3 to the right, only remaining value is the card rank.
+		sll $t0, $t0, 16
+		srl $t0, $t0, 24
+		
+		li $t1, 81 # check for "Q"
+		bne $t0, $t1, card_points_nothing
+		# otherwise we return 13.
+		li $v0, 13
+		jr $ra
+		
+	card_points_invalid_card:
+		li $v0, -1
+		jr $ra
+
 
 # Part 12
 simulate_game:

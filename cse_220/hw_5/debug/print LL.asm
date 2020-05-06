@@ -1,5 +1,5 @@
 newline: .asciiz "\n"
-
+deckprint: .asciiz "deck"
 
 
 
