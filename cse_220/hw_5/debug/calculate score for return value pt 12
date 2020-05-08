@@ -1,0 +1,21 @@
+li $s0, 0 # score
+
+li $s1, 8 # shift amt
+
+# player 1 gets 3 points
+li $t2, 1 # player 1
+mul $t3, $t2, $s1 # player index * 8
+
+li $t0, 3
+sllv $t0, $t0, $t3 
+
+add $s0, $s0, $t0
+
+# player 3 gets 4 points
+li $t2, 3 # player 3
+mul $t3, $t2, $s1 # player index * 8
+
+li $t0, 4
+sllv $t0, $t0, $t3 
+
+add $s0, $s0, $t0

@@ -975,7 +975,7 @@ deal_cards:
 	lw $s1, 4($sp)
 	lw $s2, 8($sp)
 	lw $s3, 12($sp)
-	addi $sp, $sp, -16
+	addi $sp, $sp, 16
 	
 	jr $ra
 
@@ -1093,7 +1093,995 @@ card_points:
 
 # Part 12
 simulate_game:
-jr $ra
+	# $a0 has deck of face down cards
+	# $a1 has pointer to list of UNINITIALIZED LL structs
+	# $a2 has the number of rounds to play.
+	
+	# use $s0 to keep track of # of rounds
+	# use $s1 to keep track of player's scores (check doc for how exactly this works.)
+	# use $s2 to keep track of who played the highest card in the last round. (index of that player.)
+	# use $s3 to keep track of who played the highest card in THIS ROUND. ( index of that player).
+	# use $s4 to keep track of current suit on the top (the suit that a player has to match)
+	# use $s5 to keep track of how many points are earned this round by everyone.
+	# use $s6 to keep track of the highest ranked card in this round.
+	# use $s7 to keep track of pointer to current player.  (stores address of that player)
+	
+	addi $sp, $sp, -32
+	sw $s0, 0($sp)
+	sw $s1, 4($sp)
+	sw $s2, 8($sp)
+	sw $s3, 12($sp)
+	sw $s4, 16($sp)
+	sw $s5, 20($sp)
+	sw $s6, 24($sp)
+	sw $s7, 28($sp)
+	
+	# call init_list for each player to initialize players (4 total)
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	lw $a0, 0($a1)
+	jal init_list 
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	# init player 2
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	lw $a0, 4($a1)
+	jal init_list 
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	# init player 3
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	lw $a0, 8($a1)
+	jal init_list 
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	# init player 4
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	lw $a0, 12($a1)
+	jal init_list 
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	# deal cards to players using deal_cards
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	# $a0 has the deck
+	# $a1 has players LL
+	li $a2, 4 # 4 players
+	li $a3, 13 # 52 card deck / 4 players = 13 per player.
+	
+	jal deal_cards
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	# play out 1st round b/c of how unique it is
+	
+	li $s0, 0 # 0 rounds played.
+	li $s1, 0 # total score to return later on.
+	li $s2, 0 # keep track of player who played highest card in the LAST round (index)
+	li $s3, 0 # keep track of who played highest card in THIS round (index)
+	li $s4, 67 # keep track of current suit, initialize w/ clubs since we ALWAYS start with clubs.
+	li $s5, 0 # keep track of amount of points earned this round
+	li $s6, 0 # keep track of highest ranked card's rank this round.
+	li $s7, 0 # keep track of current player we're looking at. (stores address of that player)
+	
+	# loop through each player, look for player w/ the 2 of clubs
+	
+	# check player 0
+	li $t0, 4403797 # face UP 2 of clubs is U2C -> 0x00433255 -> 4403797
+	lw $t1, 0($a1) # use $t1 as ptr to each player.
+	
+	# call remove on the player. if it returns -1, they don't have the 2 of clubs.
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $t1 
+	move $a1, $t0
+	
+	jal remove
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	beqz $v0, two_of_clubs_found
+	# otherwise we check the next player.
+	
+	addi $s3, $s3, 1 # assume next player will have 2 of clubs.
+	
+	# ***** check player 1 *****
+	li $t0, 4403797 # face UP 2 of clubs is U2C -> 0x00433255 -> 4403797
+	lw $t1, 4($a1) # use $t1 as ptr to each player.
+	
+	# call remove on the player. if it returns -1, they don't have the 2 of clubs.
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $t1 
+	move $a1, $t0
+	
+	jal remove
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	beqz $v0, two_of_clubs_found
+	# otherwise we check the next player.
+	
+	addi $s3, $s3, 1 # assume next player will have 2 of clubs.
+	
+	
+	# ***** check player 2 *****
+	li $t0, 4403797 # face UP 2 of clubs is U2C -> 0x00433255 -> 4403797
+	lw $t1, 8($a1) # use $t1 as ptr to each player.
+	
+	# call remove on the player. if it returns -1, they don't have the 2 of clubs.
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $t1 
+	move $a1, $t0
+	
+	jal remove
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	beqz $v0, two_of_clubs_found
+	# otherwise we check the next player.
+	
+	addi $s3, $s3, 1 # assume next player will have 2 of clubs.
+	
+	
+	# *****check player 3 ***** PLAYER 3 HAS TO HAVE IT IF NO ONE ELSE DOES.
+	li $t0, 4403797 # face UP 2 of clubs is U2C -> 0x00433255 -> 4403797
+	lw $t1, 12($a1) # use $t1 as ptr to each player.
+	
+	# call remove on the player. if it returns -1, they don't have the 2 of clubs.
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $t1 
+	move $a1, $t0
+	
+	jal remove
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+
+	two_of_clubs_found:
+	
+	move $s2, $s3 # use $s2 as index of max to start indexing from.
+	# $s3 has the index of the player who played the 2 of clubs. the card has been discarded using remove, so we need the rest of the players to play cards now.
+	li $s6, 50 # 2 of clubs has rank 2, the highest so far.
+	
+	# move ptr to the player who played the 2 of clubs ( their index is in $s3)
+	li $t0, 4
+	mul $t0, $t0, $s3 # store offset in $t0. 
+	
+	move $s7, $a1 # use $s7 as ptr to player array.
+	
+	add $s7, $s7, $t0 # add offset to find who played the 2 of clubs.
+	
+	# pointer of $s7 now at the player who played 2 of clubs
+	# use $s2 and adding 4 to $t1 to keep looking at the next player.
+	
+	# look at the next 3 players.
+	addi $s7, $s7, 4 # move ptr to next player.
+	addi $s2, $s2, 1
+	li $t0, 4
+	bge $s2, $t0, round_1_wrap_over_1
+	j round_1_valid_index_1
+	
+	round_1_wrap_over_1:
+		# reset pointer and index to beginning of array.
+		li $s2, 0
+		move $s7, $a1
+		
+	round_1_valid_index_1:
+	# call play_card on current player w/ the clubs suit.
+	
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $s7 # $a0 needs pointer to player struct
+	move $a1, $s4 # $a1 needs the suit.
+	
+	jal play_card
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	addi $sp, $sp, -4 # we need to preserve the $v0 register (card's point value) to add to the running sum (overwritten by compare_ranks), no more $s registers so we have to use the stack.
+	sw $v0, 0($sp)
+	bltz $v1, round_1_continue_1 # player can't match the suit. no need to try and compare for a new max.
+	
+	
+	# otherwise we compare the returned rank in $v1 to the current max.
+	# call compare_ranks
+	
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $s6 # move the current max to $v0. 
+	move $a1, $v1 # $v1 still has the returned rank from play_card.
+	
+	jal compare_ranks
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	# if compare_ranks returns 1, that means we have a new max.
+	bltz $v0, round_1_continue_1 # if the return value is neg that means the current max is greater.
+	# otherwise we update max values.
+	move $s3, $s2 # update index of player w/ max
+	move $s6, $v1 # update rank of highest ranked card.
+	
+	round_1_continue_1:
+	
+	lw $v0, 0($sp) # restore return value from play_card earlier.
+	addi $sp, $sp, 4
+	
+	add $s5, $s5, $v0 # add pts to running sum.
+	
+	
+	# LOOK AT NEXT PLAYER 
+	addi $s7, $s7, 4 # move ptr to next player.
+	addi $s2, $s2, 1
+	li $t0, 4
+	bge $s2, $t0, round_1_wrap_over_2
+	j round_1_valid_index_2
+	
+	round_1_wrap_over_2:
+		# reset pointer and index to beginning of array.
+		li $s2, 0
+		move $s7, $a1
+		
+	round_1_valid_index_2:
+	# call play_card on current player w/ the clubs suit.
+	
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $s7 # $a0 needs pointer to player struct
+	move $a1, $s4 # $a1 needs the suit.
+	
+	jal play_card
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	addi $sp, $sp, -4 # we need to preserve the $v0 register to add to the running sum (overwritten by compare_ranks), no more $s registers so we have to use the stack.
+	sw $v0, 0($sp)
+	bltz $v1, round_1_continue_2 # player can't match the suit. no need to try and compare for a new max.
+	
+	# otherwise we compare the returned rank in $v1 to the current max.
+	# call compare_ranks
+	
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $s6 # move the current max to $v0. 
+	move $a1, $v1 # $v1 still has the returned rank from play_card.
+	
+	jal compare_ranks
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	# if compare_ranks returns 1, that means we have a new max.
+	bltz $v0, round_1_continue_2 # if the return value is neg that means the current max is greater.
+	# otherwise we update max values.
+	move $s3, $s2 # update index of player w/ max
+	move $s6, $v1 # update rank of highest ranked card.
+	
+	round_1_continue_2:
+	
+	lw $v0, 0($sp) # restore return value from play_card earlier.
+	addi $sp, $sp, 4
+	add $s5, $s5, $v0 # add pts to running sum.
+	
+	# LOOK AT NEXT PLAYER
+	addi $s7, $s7, 4 # move ptr to next player.
+	addi $s2, $s2, 1
+	li $t0, 4
+	bge $s2, $t0, round_1_wrap_over_3
+	j round_1_valid_index_3
+	
+	round_1_wrap_over_3:
+		# reset pointer and index to beginning of array.
+		li $s2, 0
+		move $s7, $a1
+		
+	round_1_valid_index_3:
+	# call play_card on current player w/ the clubs suit.
+	
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $s7 # $a0 needs pointer to player struct
+	move $a1, $s4 # $a1 needs the suit.
+	
+	jal play_card
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	addi $sp, $sp, -4 # we need to preserve the $v0 register to add to the running sum (overwritten by compare_ranks), no more $s registers so we have to use the stack.
+	sw $v0, 0($sp)
+	bltz $v1, round_1_continue_3 # player can't match the suit. no need to try and compare for a new max.
+	
+	# otherwise we compare the returned rank in $v1 to the current max.
+	# call compare_ranks
+	
+	addi $sp, $sp, -16
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $a2, 8($sp)
+	sw $ra, 12($sp)
+	
+	move $a0, $s6 # move the current max to $v0. 
+	move $a1, $v1 # $v1 still has the returned rank from play_card.
+	
+	jal compare_ranks
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $a2, 8($sp)
+	lw $ra, 12($sp)
+	addi $sp, $sp, 16
+	
+	# if compare_ranks returns 1, that means we have a new max.
+	bltz $v0, round_1_continue_3 # if the return value is neg that means the current max is greater.
+	# otherwise we update max values.
+	move $s3, $s2 # update index of player w/ max
+	move $s6, $v1 # update rank of highest ranked card.
+	
+	round_1_continue_3:
+	
+	lw $v0, 0($sp) # restore return value from play_card earlier.
+	addi $sp, $sp, 4
+	add $s5, $s5, $v0 # add pts to running sum.
+	
+	# give all the points to the player w/ the max rank card played.
+	# score for this round in $s5
+	
+	li $t0, 8 # shift amt
+	
+	# player to get points stored in $s3
+	mul $t0, $s3, $t0 # player index * 8
+	sllv $s5, $s5, $t0
+	
+	add $s1, $s1, $s5
+	move $s7, $a0 # reset pointer to players list.
+	move $s2, $s3 # move index of THIS ROUND'S MAX to PREVIOUS ROUND'S MAX ( move $s2, $s3)
+	# no need to reset this round's max or its value b/c it's overwritten later anyways.
+	li $s5, 0# reset $s5 ( running sum of pts this round)
+	addi $s0, $s0, 1 # increment # of rounds played.
+	
+	# ***** main loop for playing rounds. *****
+	
+	# ***** process for the rest of the players (DO THIS 3 TIMES.): *****
+	
+	# look for card of current suit (helper function called play_card)
+	# if helper function play_card returns -1, they don't have a card of that suit. So we call draw_card on them. because the suit doesn't match, 
+	# they can't be in the running to gain points. we can just jump past setting a new max using a label called different_suit_played.
+	
+	# otherwise helper function play_card will call card_points on that node, save the card value for returning,  and then call remove on the node.
+	# helper function will return the points of the card in $v0 and the RANK (need to shift) of the card in $v1.
+	# compare the rank of the returned card to the current max. if we have a new max, we update the player + max values.
+	
+	# DIFFERENT_SUIT_PLAYED LABEL HERE ***** Changed to "continue" *****
+	# add the points of that card to the running sum
+	# go to next player and increment $s2 (index of current player.).
+	# if the index is >= 4, we mod the index (loop back to 0).
+	# we also reset the pointer for the current player.
+	
+	# ***** AFTER DOING THIS FOR THE REMAINDING 3 PLAYERS *****
+	
+	# give all the points to the player w/ the max rank card played.
+	
+	# reset pointer to players list.
+	# move index of THIS ROUND'S MAX to PREVIOUS ROUND'S MAX ( move $s2, $s3)
+	# no need to reset this round's max or its value b/c it's overwritten later anyways.
+	# reset $s5 ( running sum of pts this round)
+	# increment # of rounds played and loop over.
+		
+	# give all the points to the player w/ the max rank card played.
+	# score for this round in $s5
+	
+	for_simulate_game:
+		beq $s0, $a2, for_simulate_game_done # if # of rounds > rounds to play, we break.
+		
+		# move ptr to the player who played the max card last round ( index in $s2).
+		li $t0, 4
+		mul $t0, $t0, $s2 # store offset in $t0. 
+	
+		move $s7, $a1 # use $s7 as ptr to player array.
+	
+		add $s7, $s7, $t0 # add offset to find who played the max last round.
+		# pointer of $s7 now at the player who played the max last round.
+		
+		# call draw_card on them. we set that player and card's rank as the max for now.
+		
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+		
+		lw $a0, 0($s7) # load player address
+		
+		jal draw_card
+		
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		
+		# $v1 has the value of the card.
+		move $t0, $v1 # use $t0 to manipulate card value.
+		
+		# update current suit 
+		# shift right by 2 bytes, only remaining value is the suit.
+		srl $s4, $t0, 16
+		
+		# for now this player remains the max. we just need to update the actual max value.
+		# shift left by 2 bytes and 3 to the right, only remaining value is the card rank.
+		sll $s6, $t0, 16
+		srl $s6, $s6, 24
+		
+		# get the point value of this card and add it.
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+		
+		move $a0, $v1
+		
+		jal card_points
+		
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		
+		add $s5, $s5, $v0 # add pts to running sum.
+		
+		
+		# ***** at the beginning of each of the 3 segments below: *****
+		# go to next player and increment $s2 (index of 1st player).
+		# if the index is >= 4, we mod reset the index to 0.
+		# we also reset the pointer for the current player.
+		
+		# ***** 1 OF 3 *****
+		addi $s7, $s7, 4 # move ptr to next player.
+		addi $s2, $s2, 1
+		li $t0, 4
+		bge $s2, $t0, wrap_over_1
+		j valid_index_1
+	
+		wrap_over_1:
+			# reset pointer and index to beginning of array.
+			li $s2, 0
+			move $s7, $a1
+	
+		valid_index_1:
+		
+		# call play_card on current player
+	
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+	
+		move $a0, $s7 # $a0 needs pointer to player struct
+		move $a1, $s4 # $a1 needs the suit.
+	
+		jal play_card
+	
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+	
+		addi $sp, $sp, -4 # we need to preserve the $v0 register to add to the running sum (overwritten by compare_ranks), no more $s registers so we have to use the stack.
+		sw $v0, 0($sp)
+		bltz $v1, continue_1 # player can't match the suit. no need to try and compare for a new max.
+
+		# otherwise we compare the returned rank in $v1 to the current max.
+		# call compare_ranks
+	
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+	
+		move $a0, $s6 # move the current max to $v0. 
+		move $a1, $v1 # $v1 still has the returned rank from play_card.
+	
+		jal compare_ranks
+	
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+	
+		# if compare_ranks returns 1, that means we have a new max.
+		bltz $v0, continue_1 # if the return value is neg that means the current max is greater.
+		# otherwise we update max values.
+		move $s3, $s2 # update index of player w/ max
+		move $s6, $v1 # update rank of highest ranked card.
+	
+		continue_1:
+		lw $v0, 0($sp) # restore return value from play_card earlier.
+		addi $sp, $sp, 4
+		add $s5, $s5, $v0 # add pts to running sum.
+		
+		
+		# ***** 2 OF 3 *****
+		addi $s7, $s7, 4 # move ptr to next player.
+		addi $s2, $s2, 1
+		li $t0, 4
+		bge $s2, $t0, wrap_over_2
+		j valid_index_2
+	
+		wrap_over_2:
+			# reset pointer and index to beginning of array.
+			li $s2, 0
+			move $s7, $a1
+	
+		valid_index_2:
+		
+		# call play_card on current player
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+	
+		move $a0, $s7 # $a0 needs pointer to player struct
+		move $a1, $s4 # $a1 needs the suit.
+	
+		jal play_card
+	
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		
+		addi $sp, $sp, -4 # we need to preserve the $v0 register to add to the running sum (overwritten by compare_ranks), no more $s registers so we have to use the stack.
+		sw $v0, 0($sp)
+		bltz $v1, continue_2 # player can't match the suit. no need to try and compare for a new max.
+		
+		# otherwise we compare the returned rank in $v1 to the current max.
+		# call compare_ranks
+	
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+	
+		move $a0, $s6 # move the current max to $v0. 
+		move $a1, $v1 # $v1 still has the returned rank from play_card.
+	
+		jal compare_ranks
+	
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+	
+		# if compare_ranks returns 1, that means we have a new max.
+		bltz $v0, continue_2 # if the return value is neg that means the current max is greater.
+		# otherwise we update max values.
+		move $s3, $s2 # update index of player w/ max
+		move $s6, $v1 # update rank of highest ranked card.
+	
+		continue_2:
+		lw $v0, 0($sp) # restore return value from play_card earlier.
+		addi $sp, $sp, 4
+		add $s5, $s5, $v0 # add pts to running sum.
+		
+		
+		# ***** 3 OF 3 *****
+		addi $s7, $s7, 4 # move ptr to next player.
+		addi $s2, $s2, 1
+		li $t0, 4
+		bge $s2, $t0, wrap_over_3
+		j valid_index_3
+	
+		wrap_over_3:
+			# reset pointer and index to beginning of array.
+			li $s2, 0
+			move $s7, $a1
+	
+		valid_index_3:
+		
+		# call play_card on current player
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+	
+		move $a0, $s7 # $a0 needs pointer to player struct
+		move $a1, $s4 # $a1 needs the suit.
+	
+		jal play_card
+	
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+		
+		addi $sp, $sp, -4 # we need to preserve the $v0 register to add to the running sum (overwritten by compare_ranks), no more $s registers so we have to use the stack.
+		sw $v0, 0($sp)
+		bltz $v1, continue_3 # player can't match the suit. no need to try and compare for a new max.
+		
+		# otherwise we compare the returned rank in $v1 to the current max.
+		# call compare_ranks
+	
+		addi $sp, $sp, -16
+		sw $a0, 0($sp)
+		sw $a1, 4($sp)
+		sw $a2, 8($sp)
+		sw $ra, 12($sp)
+	
+		move $a0, $s6 # move the current max to $v0. 
+		move $a1, $v1 # $v1 still has the returned rank from play_card.
+	
+		jal compare_ranks
+	
+		lw $a0, 0($sp)
+		lw $a1, 4($sp)
+		lw $a2, 8($sp)
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
+	
+		# if compare_ranks returns 1, that means we have a new max.
+		bltz $v0, continue_3 # if the return value is neg that means the current max is greater.
+		# otherwise we update max values.
+		move $s3, $s2 # update index of player w/ max
+		move $s6, $v1 # update rank of highest ranked card.
+	
+		continue_3:
+		lw $v0, 0($sp) # restore return value from play_card earlier.
+		addi $sp, $sp, 4
+		add $s5, $s5, $v0 # add pts to running sum.
+		
+		# ***** END OF ROUND CALCULATIONS *****
+		li $t0, 8 # shift amt
+	
+		# player to get points stored in $s3
+		mul $t0, $s3, $t0 # player index * 8
+		sllv $s5, $s5, $t0
+	
+		add $s1, $s1, $s5
+		move $s7, $a0 # reset pointer to players list.
+		move $s2, $s3 # move index of THIS ROUND'S MAX to PREVIOUS ROUND'S MAX ( move $s2, $s3)
+		# no need to reset this round's max or its value b/c it's overwritten later anyways.
+		li $s5, 0 # reset $s5 ( running sum of pts this round)
+		addi $s0, $s0, 1 # increment # of rounds played.
+		j for_simulate_game
+		
+	for_simulate_game_done:
+	move $v0, $s1
+	
+	
+	lw $s0, 0($sp)
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	lw $s3, 12($sp)
+	lw $s4, 16($sp)
+	lw $s5, 20($sp)
+	lw $s6, 24($sp)
+	lw $s7, 28($sp)
+	addi $sp, $sp, 32
+	
+	jr $ra
+
+
+
+compare_ranks:
+	# $a0 has the rank of a card
+	# $a1 has the rank of another card.
+	
+	# determine whether we're looking at 2-9 or a letter card/10.
+	
+	li $t0, 50 # "2" in ascii
+	li $t1, 57 # "9" in ascii
+	
+	bgt $a0, $t1, card_one_greater_than_9 # card one is a letter card/10
+	# otherwise card one is a number card.
+	
+	bgt $a1, $t1, card_two_max # if card one is a number card and card two is a letter/10 card, two is greater no questions asked.
+	# otherwise they're both number cards.
+	j both_number_cards
+	
+	card_one_greater_than_9:
+	bgt $a1, $t1, both_greater_than_9 # if both are letter/10 cards, we need to compare further.
+	# otherwise card two is a number card so card one is the max.
+	j card_one_max
+	
+	both_number_cards:
+		# number cards are in sequence we can just compare their raw ascii values.
+		bgt $a1, $a0, card_two_max # card 2 > card 1
+		j card_one_max # card 2 < card 1
+		
+	both_greater_than_9:
+		li $t0, 84 # "T"
+		li $t1, 74  # "J"
+		li $t2, 81 # "Q"
+		li $t3, 75 # "K"
+		li $t4, 65 # "A"
+		
+		# aces are the highest no matter what.
+		beq $a0, $t4, card_one_max
+		beq $a1, $t4, card_two_max 
+		
+		beq $a0, $t0, card_two_max # tens are the lowest, if card one is 10 then card two MUST be greater.
+		beq $a1, $t0, card_one_max # opposite applies here.
+		
+		beq $a0, $t1, card_two_max # accounted for tens already, so jacks are the next "lowest".
+		beq $a1, $t1, card_one_max # read above.
+		
+		beq $a0, $t2, card_two_max # accounted for tens and jacks already, queens are next "lowest"
+		beq $a1, $t2, card_one_max
+		
+	card_one_max:
+	li $v0, -1
+	jr $ra
+	
+	card_two_max:
+	li $v0, 1
+	jr $ra
+	
+	# for our purposes, there will never be a rank comparison between different suits, and decks will have no dupes, so no ties.
+	
+		
+play_card:
+	# $a0 has a pointer to a player struct.
+	# $a1 has the suit to look for
+	
+	addi $sp, $sp, -12
+	sw $s0, 0($sp) # use $s0 to store rank of card
+	sw $s1, 4($sp) # use $s1 to store point value of card
+	sw $s2, 8($sp) # use $s2 to store value of card (face up/suit/rank and all)
+	
+	lw $t0, 0($a0) # use $t0 as ptr to the player.
+	
+	li $t1, 0
+	lw $t2, 0($t0) # load size of list
+	lw $t3, 4($t0) # load head of list
+	
+	for_play_card:
+		beq $t1, $t2, for_play_card_done # suit not found.
+		
+		lw $t4, 0($t3) # load value of current node into $t4.
+		
+		# shift right by 2 bytes, only remaining value is the suit.
+		srl $t4, $t4, 16
+		
+		beq $t4, $a1, suit_found
+		j for_play_card_continue
+		
+		suit_found:
+			# calculate card rank.
+			lw $t4, 0($t3) # load value of current node into $t4. 
+			move $s2, $t4 # store card value into $s2
+			
+			# shift left by 2 bytes and 3 to the right, only remaining value is the card rank.
+			sll $t4, $t4, 16
+			srl $t4, $t4, 24
+			move $s0, $t4
+			
+			# call card points on the card value
+			
+			addi $sp, $sp, -12
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $ra, 8($sp)
+			
+			move $a0, $s2 # move card value into $a0
+			
+			jal card_points
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $ra, 8($sp)
+			addi $sp, $sp, 12
+			
+			move $s1, $v0 # card point in $v0, move it to $s1
+			
+			# remove the card.
+			
+			addi $sp, $sp, -12
+			sw $a0, 0($sp)
+			sw $a1, 4($sp)
+			sw $ra, 8($sp)
+			
+			lw $a0, 0($a0) # use $t0 as ptr to the player.
+			move $a1, $s2 # move card value to remove
+			
+			jal remove
+			
+			lw $a0, 0($sp)
+			lw $a1, 4($sp)
+			lw $ra, 8($sp)
+			addi $sp, $sp, 12
+			
+			move $v0, $s1 # points
+			move $v1, $s0 # rank
+			
+			lw $s0, 0($sp) 
+			lw $s1, 4($sp)
+			lw $s2, 8($sp)
+			addi $sp, $sp, 12
+			
+			jr $ra
+			
+		for_play_card_continue:
+		addi $t1, $t1, 1
+		lw $t3, 4($t3) # load next node.
+		j for_play_card
+	
+	for_play_card_done:
+	# suit not found, we just call deal_card. return -1 in rank since we don't wanna consider it as a max, but still need the point value of the card.
+	
+	lw $t0, 0($a0) # use $t0 as ptr to the player.
+	
+	addi $sp, $sp, -12
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $ra, 8($sp)
+	
+	move $a0, $t0 
+	
+	jal draw_card
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	
+	# integer of card will be in $v1. we need to call card_points now.
+	
+	addi $sp, $sp, -12
+	sw $a0, 0($sp)
+	sw $a1, 4($sp)
+	sw $ra, 8($sp)
+	
+	move $a0, $v1
+	
+	jal card_points
+	
+	lw $a0, 0($sp)
+	lw $a1, 4($sp)
+	lw $ra, 8($sp)
+	addi $sp, $sp, 12
+	
+	# card point value will be stored in $v0.
+	
+	lw $s0, 0($sp) 
+	lw $s1, 4($sp)
+	lw $s2, 8($sp)
+	addi $sp, $sp, 12
+	
+	# value still in $v0.
+	li $v1, -1
+	
+	jr $ra
 
 #################### DO NOT CREATE A .data SECTION ####################
 #################### DO NOT CREATE A .data SECTION ####################

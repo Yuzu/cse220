@@ -1,5 +1,5 @@
 .data
-card: .word 1234567
+card: .word 5458500
 
 .text
 .globl main

@@ -1,0 +1,8 @@
+li $t0, 2
+
+li $t1, 4
+
+div $t0, $t1
+
+mflo $s0
+mfhi $s1
